@@ -1,0 +1,515 @@
+<?php
+// $Id: station_program.install,v 1.13 2009/08/29 08:01:42 drewish Exp $
+
+/**
+ * Implementation of hook_schema().
+ */
+function station_program_install() {
+  // To deal with the possibility that we're being installed at the same time
+  // as CCK and the field modules we depend on, we need to manually enable the
+  // the modules to ensure they're available before we create our fields.
+  module_enable(array('content', 'text', 'link'));
+
+  # var_export(content_fields('field_station_program_genre', 'station_program'));
+  $genre_field = array(
+    'field_name' => 'field_station_program_genre',
+    'type_name' => 'station_program',
+    'display_settings' =>
+    array(
+      'label' =>
+      array(
+        'format' => 'above',
+        'exclude' => 0,
+      ),
+      'teaser' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'full' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      4 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      2 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      3 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'token' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'text',
+    'required' => '1',
+    'multiple' => '0',
+    'db_storage' => '1',
+    'module' => 'text',
+    'active' => '1',
+    'locked' => '0',
+    'columns' =>
+    array(
+      'value' =>
+      array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+    ),
+    'text_processing' => '0',
+    'max_length' => '',
+    'allowed_values' => '',
+    'allowed_values_php' => '',
+    'widget' =>
+    array(
+      'rows' => 5,
+      'size' => '60',
+      'default_value' =>
+      array(
+        0 =>
+        array(
+          'value' => '',
+          '_error_element' => 'default_value_widget][field_station_program_genre][0][value',
+        ),
+      ),
+      'default_value_php' => NULL,
+      'label' => 'Genre',
+      'weight' => '-3',
+      'description' => 'A free-form description of the musical genres played on the program.',
+      'type' => 'text_textfield',
+      'module' => 'text',
+    ),
+  );
+
+
+  # var_export(content_fields('field_station_program_link', 'station_program'));
+  $link_field = array(
+    'field_name' => 'field_station_program_link',
+    'type_name' => 'station_program',
+    'display_settings' =>
+    array(
+      'weight' => '-2',
+      'parent' => '',
+      'label' =>
+      array(
+        'format' => 'above',
+      ),
+      'teaser' =>
+      array(
+        'format' => 'hidden',
+        'exclude' => 0,
+      ),
+      'full' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      4 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      2 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      3 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'token' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'link',
+    'required' => '0',
+    'multiple' => '0',
+    'db_storage' => '1',
+    'module' => 'link',
+    'active' => '1',
+    'locked' => '0',
+    'columns' =>
+    array(
+      'url' =>
+      array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+      'title' =>
+      array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+      'attributes' =>
+      array(
+        'type' => 'text',
+        'size' => 'medium',
+        'not null' => FALSE,
+      ),
+    ),
+    'attributes' =>
+    array(
+      'target' => 'default',
+      'rel' => '',
+      'class' => '',
+    ),
+    'display' =>
+    array(
+      'url_cutoff' => '80',
+    ),
+    'url' => 0,
+    'title' => 'none',
+    'title_value' => '',
+    'enable_tokens' => 0,
+    'widget' =>
+    array(
+      'default_value' =>
+      array(
+        0 =>
+        array(
+          'title' => '',
+          'url' => '',
+        ),
+      ),
+      'default_value_php' => NULL,
+      'label' => 'Homepage URL',
+      'weight' => '-2',
+      'description' => 'Link to the program\'s website.',
+      'type' => 'link',
+      'module' => 'link',
+    ),
+  );
+
+
+  // Create the fields.
+  module_load_include('inc', 'content', 'includes/content.crud');
+  content_field_instance_create($link_field);
+  content_field_instance_create($genre_field);
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function station_program_uninstall() {
+  if (module_exists('content')) {
+    module_load_include('inc', 'content', 'includes/content.crud');
+    content_field_instance_delete('field_station_program_genre', 'station_program');
+    content_field_instance_delete('field_station_program_link', 'station_program');
+  }
+}
+
+/**
+ * Implementation of hook_update_last_removed().
+ */
+function station_program_update_last_removed() {
+  // We've removed the 5.x-1.x version of mymodule, including database updates.
+  // The next update function is mymodule_update_5200().
+  return 5100;
+}
+
+/**
+ * Change the program node name to station_program.
+ */
+function station_program_update_5200() {
+  $ret = array();
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      $ret[] = update_sql("UPDATE {node} SET type = 'station_program' WHERE type='program';");
+      $ret[] = update_sql("UPDATE {node_type} SET type = 'station_program' WHERE type='program';");
+    break;
+  }
+  return $ret;
+}
+
+/**
+ * Create CCK fields and migrate the data to them.
+ *
+ * @return unknown
+ */
+function station_program_update_6000() {
+  $ret = array();
+
+  // Make sure they've enabled CCK and link modules
+  if (!module_exists('content') || !module_exists('text') || !module_exists('link')) {
+    $ret['#abort'] = array('success' => FALSE, 'query' => t('Station Program now requires CCK, Text and Link modules. Some updates are still pending.<br/>Please re-run the update script.'));
+    return $ret;
+  }
+  // Make sure there's no pending CCK updates
+  drupal_load('module', 'content');
+  if ($abort = content_check_update('text')) {
+    return $abort;
+  }
+  if ($abort = content_check_update('link')) {
+    return $abort;
+  }
+
+  # var_export(content_fields('field_station_program_genre', 'station_program'));
+  $genre_field = array(
+    'field_name' => 'field_station_program_genre',
+    'type_name' => 'station_program',
+    'display_settings' =>
+    array(
+      'label' =>
+      array(
+        'format' => 'above',
+        'exclude' => 0,
+      ),
+      'teaser' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'full' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      4 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      2 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      3 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'token' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'text',
+    'required' => '1',
+    'multiple' => '0',
+    'db_storage' => '1',
+    'module' => 'text',
+    'active' => '1',
+    'locked' => '0',
+    'columns' =>
+    array(
+      'value' =>
+      array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+    ),
+    'text_processing' => '0',
+    'max_length' => '',
+    'allowed_values' => '',
+    'allowed_values_php' => '',
+    'widget' =>
+    array(
+      'rows' => 5,
+      'size' => '60',
+      'default_value' =>
+      array(
+        0 =>
+        array(
+          'value' => '',
+          '_error_element' => 'default_value_widget][field_station_program_genre][0][value',
+        ),
+      ),
+      'default_value_php' => NULL,
+      'label' => 'Genre',
+      'weight' => '-3',
+      'description' => 'A free-form description of the musical genres played on the program.',
+      'type' => 'text_textfield',
+      'module' => 'text',
+    ),
+  );
+
+
+  # var_export(content_fields('field_station_program_link', 'station_program'));
+  $link_field = array(
+    'field_name' => 'field_station_program_link',
+    'type_name' => 'station_program',
+    'display_settings' =>
+    array(
+      'weight' => '-2',
+      'parent' => '',
+      'label' =>
+      array(
+        'format' => 'above',
+      ),
+      'teaser' =>
+      array(
+        'format' => 'hidden',
+        'exclude' => 0,
+      ),
+      'full' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      4 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      2 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      3 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'token' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'link',
+    'required' => '0',
+    'multiple' => '0',
+    'db_storage' => '1',
+    'module' => 'link',
+    'active' => '1',
+    'locked' => '0',
+    'columns' =>
+    array(
+      'url' =>
+      array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+      'title' =>
+      array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+      'attributes' =>
+      array(
+        'type' => 'text',
+        'size' => 'medium',
+        'not null' => FALSE,
+      ),
+    ),
+    'attributes' =>
+    array(
+      'target' => 'default',
+      'rel' => '',
+      'class' => '',
+    ),
+    'display' =>
+    array(
+      'url_cutoff' => '80',
+    ),
+    'url' => 0,
+    'title' => 'none',
+    'title_value' => '',
+    'enable_tokens' => 0,
+    'widget' =>
+    array(
+      'default_value' =>
+      array(
+        0 =>
+        array(
+          'title' => '',
+          'url' => '',
+        ),
+      ),
+      'default_value_php' => NULL,
+      'label' => 'Homepage URL',
+      'weight' => '-2',
+      'description' => 'Link to the program\'s website.',
+      'type' => 'link',
+      'module' => 'link',
+    ),
+  );
+
+
+  // Create the fields.
+  module_load_include('inc', 'content', 'includes/content.crud');
+  content_field_instance_create($link_field);
+  content_field_instance_create($genre_field);
+
+
+  // Now the tricky part is to migrate the data.
+  // The procedure I'm using here is a bit overkill for migrating two fields
+  // but I'm planning on re-using it so it makes sense to go ahead and just be
+  // robust.
+  // We've got to assume that CCK's table might only have records for half of
+  // the nodes we're migrating so the strategy is to INSERT then UPDATE.
+  $migrations = array(
+    array(
+      'cck_field' => $genre_field,
+      'from_table' => 'station_program',
+      'from_col' => 'genre',
+      'from_join' => 'vid',
+      'to_col' => 'value',
+      'to_join' => 'vid',
+    ),
+    array(
+      'cck_field' => $link_field,
+      'from_table' => 'station_program',
+      'from_col' => 'url',
+      'from_join' => 'vid',
+      'to_col' => 'url',
+      'to_join' => 'vid',
+    ),
+  );
+  foreach ($migrations as $migration) {
+    // Might be needlessly escaping the names here but it shouldn't hurt
+    // anything.
+    $from_table = db_escape_table($migration['from_table']);
+    $from_col   = db_escape_table($migration['from_col']);
+    $from_join  = db_escape_table($migration['from_join']);
+
+    $db_info    = content_database_info($migration['cck_field']);
+    $to_table   = db_escape_table($db_info['table']);
+    $to_col     = db_escape_table($db_info['columns'][$migration['to_col']]['column']);
+    $to_join    = db_escape_table($migration['to_join']);
+
+    // Make sure there's a record in CCK's table for every one in the source
+    // table, then do an update of all the records.
+    $ret[] = update_sql("INSERT INTO {{$to_table}} (nid, vid) SELECT n.nid, n.vid FROM {{$from_table}} f INNER JOIN {node} n ON f.$from_join = n.nid WHERE NOT EXISTS ( SELECT * FROM {{$to_table}} t WHERE f.$from_join = t.$to_join)");
+    $ret[] = update_sql("UPDATE {{$to_table}} t INNER JOIN {{$from_table}} f ON t.$to_join = f.$from_join SET t.$to_col = f.$from_col");
+  }
+
+#  db_drop_table($ret, 'station_program');
+
+  return $ret;
+}

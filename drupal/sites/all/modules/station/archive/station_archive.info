@@ -1,0 +1,16 @@
+; $Id: station_archive.info,v 1.6 2009/08/29 08:01:42 drewish Exp $
+name = Station Archive
+description = Provides an archive of the station's webstream.
+core = 6.x
+package = Station
+dependencies[] = station
+dependencies[] = audio
+dependencies[] = taxonomy
+dependencies[] = views
+
+; Information added by drupal.org packaging script on 2010-01-12
+version = "6.x-2.0-beta3"
+core = "6.x"
+project = "station"
+datestamp = "1263282005"
+

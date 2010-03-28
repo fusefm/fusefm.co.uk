@@ -1,0 +1,14 @@
+; CVS ID
+name = Get Satisfaction
+description = Adds Get Satisfaction javascript code to your site
+package = Other
+core = 6.x
+
+
+
+; Information added by drupal.org packaging script on 2009-11-06
+version = "6.x-1.2"
+core = "6.x"
+project = "getsatisfaction"
+datestamp = "1257507963"
+

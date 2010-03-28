@@ -1,0 +1,589 @@
+<?php
+
+// $Id: station_playlist.install,v 1.14 2009/11/26 03:55:14 drewish Exp $
+
+/**
+ * Implementation of hook_schema().
+ */
+function station_playlist_install() {
+  drupal_install_schema('station_playlist');
+
+  // To deal with the possibility that we're being installed at the same time
+  // as CCK and the field modules we depend on, we need to manually enable the
+  // the modules to ensure they're available before we create our fields.
+  module_enable(array('content', 'nodereference', 'date'));
+
+  # var_export(content_fields('field_station_program', 'station_playlist'));
+  $program_field = array(
+    'field_name' => 'field_station_program',
+    'type_name' => 'station_playlist',
+    'display_settings' =>
+    array(
+      'weight' => '-2',
+      'parent' => '',
+      'label' =>
+      array(
+        'format' => 'hidden',
+      ),
+      'teaser' =>
+      array(
+        'format' => 'hidden',
+        'exclude' => 0,
+      ),
+      'full' =>
+      array(
+        'format' => 'hidden',
+        'exclude' => 0,
+      ),
+      4 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      2 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      3 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'token' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'nodereference',
+    'required' => '1',
+    'multiple' => '0',
+    'db_storage' => '1',
+    'module' => 'nodereference',
+    'active' => '1',
+    'locked' => '1',
+    'columns' =>
+    array(
+      'nid' =>
+      array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+    ),
+    'referenceable_types' =>
+    array(
+      'station_program' => 'station_program',
+    ),
+    'advanced_view' => '--',
+    'advanced_view_args' => '',
+    'widget' =>
+    array(
+      'autocomplete_match' => 'contains',
+      'default_value' =>
+      array(
+        0 =>
+        array(
+          'nid' => NULL,
+          '_error_element' => 'default_value_widget][field_station_playlist_program][0][nid][nid',
+        ),
+      ),
+      'default_value_php' => NULL,
+      'label' => 'Program',
+      'weight' => '-2',
+      'description' => 'The name of the program. If you filled in for someone else, enter the name of their program.',
+      'type' => 'nodereference_autocomplete',
+      'module' => 'nodereference',
+    ),
+  );
+
+  # var_export(content_fields('field_station_playlist_date', 'station_playlist'));
+  $date_field = array(
+    'field_name' => 'field_station_playlist_date',
+    'type_name' => 'station_playlist',
+    'display_settings' =>
+    array(
+      'weight' => '-1',
+      'parent' => '',
+      'label' =>
+      array(
+        'format' => 'hidden',
+      ),
+      'teaser' =>
+      array(
+        'format' => 'hidden',
+        'exclude' => 0,
+      ),
+      'full' =>
+      array(
+        'format' => 'hidden',
+        'exclude' => 0,
+      ),
+      4 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      2 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      3 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'token' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'datestamp',
+    'required' => '1',
+    'multiple' => '0',
+    'db_storage' => '1',
+    'module' => 'date',
+    'active' => '1',
+    'locked' => '1',
+    'columns' =>
+    array(
+      'value' =>
+      array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+    ),
+    'granularity' =>
+    array(
+      'year' => 'year',
+      'month' => 'month',
+      'day' => 'day',
+    ),
+    'timezone_db' => '',
+    'tz_handling' => 'none',
+    'todate' => '',
+    'repeat' => 0,
+    'repeat_collapsed' => '',
+    'output_format_date' => 'm/d/Y - H:i',
+    'output_format_custom' => '',
+    'output_format_date_long' => 'l, F j, Y - H:i',
+    'output_format_custom_long' => '',
+    'output_format_date_medium' => 'D, m/d/Y - H:i',
+    'output_format_custom_medium' => '',
+    'output_format_date_short' => 'm/d/Y - H:i',
+    'output_format_custom_short' => '',
+    'widget' =>
+    array(
+      'default_value' => 'now',
+      'default_value_code' => '',
+      'default_value2' => 'same',
+      'default_value_code2' => '',
+      'input_format' => 'm/d/Y - H:i:s',
+      'input_format_custom' => '',
+      'increment' => '1',
+      'text_parts' =>
+      array(
+      ),
+      'year_range' => '-3:+3',
+      'label_position' => 'within',
+      'label' => 'Date',
+      'weight' => '-3',
+      'description' => 'The date the program aired.
+        ',
+      'type' => 'date_select',
+      'module' => 'date',
+    ),
+  );
+
+  // Create the fields.
+  module_load_include('inc', 'content', 'includes/content.crud');
+  content_field_instance_create($program_field);
+  content_field_instance_create($date_field);
+
+//  switch ($GLOBALS['db_type']) {
+//    case 'mysql':
+//    case 'mysqli':
+//      db_query("
+//        CREATE TABLE  {station_playlist_track} (
+//          `nid` int(10) unsigned NOT NULL default '0',
+//          `weight` tinyint(4) unsigned NOT NULL default '0',
+//          `artist` varchar(255) NOT NULL default '',
+//          `album` varchar(255) NOT NULL default '',
+//          `title` varchar(255) NOT NULL default '',
+//          `label` varchar(255) NOT NULL default '',
+//          `link` varchar(255) NOT NULL default '',
+//          KEY `station_playlist_artist` (`artist`),
+//          KEY `station_playlist_nid_weight` (`nid`,`weight`),
+//          KEY `station_playlist_title` (`title`),
+//          KEY `station_playlist_album` (`album`),
+//          KEY `station_playlist_label` (`label`)
+//        ) /*!40100 DEFAULT CHARACTER SET utf8 */;
+//      ");
+//      break;
+//  }
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function station_playlist_uninstall() {
+  if (module_exists('content')) {
+    module_load_include('inc', 'content', 'includes/content.crud');
+    content_field_instance_delete('field_station_program', 'station_playlist');
+    content_field_instance_delete('field_station_playlist_date', 'station_playlist');
+  }
+
+  drupal_uninstall_schema('station_playlist');
+
+  variable_del('station_playlist_track_autocomplete_source');
+  variable_del('station_playlist_title_dateformat');
+  variable_del('station_playlist_program_dateformat');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function station_playlist_schema() {
+  $schema['station_playlist_track'] = array(
+    'description' => t('Information tracks played in a playlist.'),
+    'fields' => array(
+      'nid' => array(
+        'description' => t("The playlist's {node}.nid."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'weight' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+        'description' => t('The weight of this track in relation to other tracks.'),
+      ),
+      'artist' => array(
+        'description' => t('Name of the artist.'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'album' => array(
+        'description' => t('Name of the album.'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'title' => array(
+        'description' => t('Title of the song.'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'label' => array(
+        'description' => t('Name of the label that released the album.'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'link' => array(
+        'description' => t('Link to more info on the track.'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'indexes' => array(
+      'station_playlist_artist'     => array('artist'),
+      'station_playlist_nid_weight' => array('nid', 'weight'),
+      'station_playlist_title'      => array('album'),
+      'station_playlist_album'      => array('album'),
+      'station_playlist_label'      => array('label'),
+    ),
+//    'primary key' => array('vid', 'weight'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_update_last_removed().
+ */
+function station_playlist_update_last_removed() {
+  // We've removed the 5.x-1.x version of mymodule, including database updates.
+  // The next update function is mymodule_update_5200().
+  return 101;
+}
+
+/**
+ * Create CCK fields and migrate the data to them.
+ */
+function station_playlist_update_6000() {
+  $ret = array();
+
+  // Make sure they've enabled CCK and link modules
+  if (!module_exists('content') || !module_exists('nodereference') || !module_exists('date')) {
+    $ret['#abort'] = array('success' => FALSE, 'query' => t('Station Playlist now requires CCK, Node Reference, and Link modules. Some updates are still pending.<br/>Please re-run the update script.'));
+    return $ret;
+  }
+  // Make sure there's no pending CCK updates
+  drupal_load('module', 'content');
+  if ($abort = content_check_update('nodereference')) {
+    return $abort;
+  }
+  if ($abort = content_check_update('date')) {
+    return $abort;
+  }
+
+  # var_export(content_fields('field_station_program', 'station_playlist'));
+  $program_field = array(
+    'field_name' => 'field_station_program',
+    'type_name' => 'station_playlist',
+    'display_settings' =>
+    array(
+      'weight' => '-2',
+      'parent' => '',
+      'label' =>
+      array(
+        'format' => 'hidden',
+      ),
+      'teaser' =>
+      array(
+        'format' => 'hidden',
+        'exclude' => 0,
+      ),
+      'full' =>
+      array(
+        'format' => 'hidden',
+        'exclude' => 0,
+      ),
+      4 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      2 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      3 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'token' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'nodereference',
+    'required' => '1',
+    'multiple' => '0',
+    'db_storage' => '1',
+    'module' => 'nodereference',
+    'active' => '1',
+    'locked' => '1',
+    'columns' =>
+    array(
+      'nid' =>
+      array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+    ),
+    'referenceable_types' =>
+    array(
+      'station_program' => 'station_program',
+    ),
+    'advanced_view' => '--',
+    'advanced_view_args' => '',
+    'widget' =>
+    array(
+      'autocomplete_match' => 'contains',
+      'default_value' =>
+      array(
+        0 =>
+        array(
+          'nid' => NULL,
+          '_error_element' => 'default_value_widget][field_station_playlist_program][0][nid][nid',
+        ),
+      ),
+      'default_value_php' => NULL,
+      'label' => 'Program',
+      'weight' => '-2',
+      'description' => 'The name of the program. If you filled in for someone else, enter the name of their program.',
+      'type' => 'nodereference_autocomplete',
+      'module' => 'nodereference',
+    ),
+  );
+
+  # var_export(content_fields('field_station_playlist_date', 'station_playlist'));
+  $date_field = array(
+    'field_name' => 'field_station_playlist_date',
+    'type_name' => 'station_playlist',
+    'display_settings' =>
+    array(
+      'weight' => '-1',
+      'parent' => '',
+      'label' =>
+      array(
+        'format' => 'hidden',
+      ),
+      'teaser' =>
+      array(
+        'format' => 'hidden',
+        'exclude' => 0,
+      ),
+      'full' =>
+      array(
+        'format' => 'hidden',
+        'exclude' => 0,
+      ),
+      4 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      2 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      3 =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'token' =>
+      array(
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'datestamp',
+    'required' => '1',
+    'multiple' => '0',
+    'db_storage' => '1',
+    'module' => 'date',
+    'active' => '1',
+    'locked' => '1',
+    'columns' =>
+    array(
+      'value' =>
+      array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+    ),
+    'granularity' =>
+    array(
+      'year' => 'year',
+      'month' => 'month',
+      'day' => 'day',
+    ),
+    'timezone_db' => '',
+    'tz_handling' => 'none',
+    'todate' => '',
+    'repeat' => 0,
+    'repeat_collapsed' => '',
+    'output_format_date' => 'm/d/Y - H:i',
+    'output_format_custom' => '',
+    'output_format_date_long' => 'l, F j, Y - H:i',
+    'output_format_custom_long' => '',
+    'output_format_date_medium' => 'D, m/d/Y - H:i',
+    'output_format_custom_medium' => '',
+    'output_format_date_short' => 'm/d/Y - H:i',
+    'output_format_custom_short' => '',
+    'widget' =>
+    array(
+      'default_value' => 'now',
+      'default_value_code' => '',
+      'default_value2' => 'same',
+      'default_value_code2' => '',
+      'input_format' => 'm/d/Y - H:i:s',
+      'input_format_custom' => '',
+      'increment' => '1',
+      'text_parts' =>
+      array(
+      ),
+      'year_range' => '-3:+3',
+      'label_position' => 'within',
+      'label' => 'Date',
+      'weight' => '-3',
+      'description' => 'The date the program aired.
+        ',
+      'type' => 'date_select',
+      'module' => 'date',
+    ),
+  );
+
+  // Create the fields.
+  module_load_include('inc', 'content', 'includes/content.crud');
+  content_field_instance_create($program_field);
+  content_field_instance_create($date_field);
+
+
+  // Now the tricky part is to migrate the data.
+  // The procedure I'm using here is a bit overkill for migrating two fields
+  // but I'm planning on re-using it so it makes sense to go ahead and just be
+  // robust.
+  // We've got to assume that CCK's table might only have records for half of
+  // the nodes we're migrating so the strategy is to INSERT then UPDATE.
+  $migrations = array(
+    array(
+      'cck_field' => $program_field,
+      'from_table' => 'station_playlist',
+      'from_col' => 'program_nid',
+      'from_join' => 'nid',
+      'to_col' => 'nid',
+      'to_join' => 'nid',
+    ),
+    array(
+      'cck_field' => $date_field,
+      'from_table' => 'station_playlist',
+      'from_col' => 'timestamp',
+      'from_join' => 'nid',
+      'to_col' => 'value',
+      'to_join' => 'nid',
+    ),
+  );
+  foreach ($migrations as $migration) {
+    // Might be needlessly escaping the names here but it shouldn't hurt
+    // anything.
+    $from_table = db_escape_table($migration['from_table']);
+    $from_col   = db_escape_table($migration['from_col']);
+    $from_join  = db_escape_table($migration['from_join']);
+
+    $db_info    = content_database_info($migration['cck_field']);
+    $to_table   = db_escape_table($db_info['table']);
+    $to_col     = db_escape_table($db_info['columns'][$migration['to_col']]['column']);
+    $to_join    = db_escape_table($migration['to_join']);
+
+    // Make sure there's a record in CCK's table for every one in the source
+    // table, then do an update of all the records.
+    $ret[] = update_sql("INSERT INTO {{$to_table}} (nid, vid) SELECT n.nid, n.vid FROM {{$from_table}} f INNER JOIN {node} n ON f.$from_join = n.nid WHERE NOT EXISTS ( SELECT * FROM {{$to_table}} t WHERE f.$from_join = t.$to_join)");
+    $ret[] = update_sql("UPDATE {{$to_table}} t INNER JOIN {{$from_table}} f ON t.$to_join = f.$from_join SET t.$to_col = f.$from_col");
+  }
+
+#  db_drop_table($ret, 'station_playlist');
+
+  return $ret;
+}
+
+// TODO Update to add a vid and a primary key on it.

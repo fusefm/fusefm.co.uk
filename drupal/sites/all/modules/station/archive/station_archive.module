@@ -1,0 +1,719 @@
+<?php
+// $Id: station_archive.module,v 1.49 2009/12/14 06:31:30 drewish Exp $
+
+/**
+ * Implementation of hook_help().
+ */
+function station_archive_help($section = '') {
+  switch ($section) {
+    case 'admin/settings/station/archive':
+      return t("These settings let you configure the way the station's webstream is archived into audio nodes. Audio is imported into the archive as part of Drupal's cron task. You'll need to ensure that that is properly configured.");
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function station_archive_menu() {
+  // Legacy menu items. This functionality is handled by Views now.
+  $items['last'] = array(
+    'title' => 'Show archive',
+    'page callback' => 'station_archive_view_html',
+    'access arguments' => array('access content'),
+    'file' => 'station_archive.legacy_pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['last/hours'] = array(
+    'page callback' => 'station_archive_view_hours_html',
+    'access arguments' => array('access content'),
+    'file' => 'station_archive.legacy_pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['rss'] = array(
+    'title' => 'RSS show archive',
+    'page callback' => 'station_archive_view_rss',
+    'access arguments' => array('access content'),
+    'file' => 'station_archive.legacy_pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['rss/hours'] = array(
+    'page callback' => 'station_archive_view_hours_rss',
+    'access arguments' => array('access content'),
+    'file' => 'station_archive.legacy_pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+  // end legacy menu items
+
+  $items['admin/settings/station/archive'] = array(
+    'title' => 'Archive',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('station_archive_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'station_archive.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function station_archive_perm() {
+  return array(
+    'administer station archive',
+  );
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function station_archive_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+  case 'view':
+    if (user_access('access content')) {
+      switch ($delta) {
+        case 1:
+          $block['subject'] = t('Browse by day');
+          $block['content'] = _station_archive_browse_block();
+          break;
+      }
+      return $block;
+    }
+    break;
+
+  case 'list':
+    $blocks[1]['info'] = t('Station Archive: Browse by taxonomy');
+    return $blocks;
+  }
+}
+
+/**
+ * Return HTML for browsing the taxonomy.
+ */
+function _station_archive_browse_block() {
+  $vid = _station_archive_get_vid();
+  $tree = taxonomy_get_tree($vid);
+  if ($tree) {
+    foreach ($tree as $term) {
+      if ($term->depth == 0) {
+        $items[] = l($term->name, 'taxonomy/term/'. $term->tid);
+      }
+    }
+    return theme('item_list', $items);
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function station_archive_nodeapi(&$node, $op, $teaser, $page) {
+  if ($node->type == 'audio') {
+    switch ($op) {
+      case 'update':
+        if (isset($node->station_archive) && user_access('administer station archive')) {
+          // Remove any existing records.
+          db_query("DELETE FROM {station_archive_item} WHERE audio_nid = %d", $node->nid);
+          // If this should be in the archive, create a new record.
+          if ($node->station_archive['archived']) {
+            if (empty($node->station_archive['aired'])) {
+              $node->station_archive['aired'] = (integer) $node->created;
+            }
+            if (empty($node->station_archive['imported'])) {
+              $node->station_archive['imported'] = time();
+            }
+            $record = array_merge($node->station_archive, array('audio_nid' => $node->nid));
+            drupal_write_record('station_archive_item', $record);
+          }
+        }
+        break;
+
+      case 'delete':
+        // remove our tracking records when the audio node is deleted. we only
+        // assume that audio node are on this machine, the program nodes could
+        // be on a remote server.
+        db_query('DELETE FROM {station_archive_item} WHERE audio_nid = %d', $node->nid);
+        break;
+
+      case 'load':
+        // Sneak the '1 AS archived' in so we've got a value to indicate that
+        // this node is in the archive.
+        $row = db_fetch_array(db_query("SELECT 1 AS archived, sa.program_nid, sa.aired, sap.title AS program_title, sa.imported, sa.permanent FROM {station_archive_item} sa LEFT OUTER JOIN {station_archive_program} sap ON sa.program_nid = sap.program_nid WHERE sa.audio_nid = %d", $node->nid));
+        if ($row) {
+          return array('station_archive' => $row);
+        }
+        break;
+
+      case 'view':
+        // If it's in the archives, set the menu appropriately
+        if ($page && !$teaser && isset($node->station_archive)) {
+          $breadcrumb = array(
+             l(t('Home'), NULL),
+             l(t('Station'), 'station'),
+             l(t('Archives'), 'station/archives'),
+             l($node->station_archive['program_title'], 'station/archives/'. $node->station_archive['program_nid']),
+          );
+          drupal_set_breadcrumb($breadcrumb);
+
+          // Provide information to admins on the import and deletion dates.
+          if (user_access('administer station archive')) {
+            $node->content['station_archive'] = array(
+              '#type' => 'fieldset',
+              '#title' => t('Station Archive Admin Info'),
+              '#collapsible' => TRUE,
+              '#collapsed' => TRUE,
+              station_archive_node_info_form($node),
+            );
+          }
+        }
+
+        break;
+    }
+  }
+}
+
+/**
+ * Get an array containing information about programs.
+ *
+ * @return
+ *   An array keyed by program ID, with each program stored as an object.
+ */
+function station_archive_get_programs() {
+  $programs = array();
+  $result = db_query('SELECT sap.program_nid AS nid, sap.title FROM {station_archive_program} sap ORDER BY sap.title');
+  while ($obj = db_fetch_object($result)) {
+    $programs[$obj->nid] = $obj;
+  }
+  return $programs;
+}
+
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function station_archive_form_alter(&$form, $form_state, $form_id) {
+  // We only alter audio node edit forms
+  if ($form_id == 'audio_node_form') {
+    $node = $form['#node'];
+
+    if (isset($node->station_archive) || user_access('administer station archive')) {
+      $form['station_archive'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Station Archive'),
+        '#collapsible' => TRUE,
+        '#collapsed' => (empty($node->station_archive['archived']) || !isset($node->audio_file)),
+        '#weight' => -5,
+        '#tree' => TRUE,
+        station_archive_node_info_form($node),
+      );
+      if (user_access('administer station archive')) {
+        $program_options = array();
+        foreach (station_archive_get_programs() as $nid => $program) {
+          $program_options[$nid] = $program->title;
+        }
+        $form['station_archive']['archived'] = array(
+          '#type' => 'checkbox',
+          '#title' => t('In Station Archive'),
+          '#default_value' => empty($node->station_archive['archived']) ? FALSE : TRUE,
+          '#description' => t("If this is checked, this then the station archive module will associate this with a program."),
+          '#weight' => -1,
+        );
+        $form['station_archive']['program_nid'] = array(
+          '#type' => 'select',
+          '#title' => t('Recording of'),
+          '#options' => $program_options,
+          '#default_value' => empty($node->station_archive['program_nid']) ? NULL : $node->station_archive['program_nid'],
+          '#description' => t('Select the program that this audio is a recording of.')
+        );
+        $form['station_archive']['refresh'] = array(
+          '#type' => 'fieldset',
+          '#title' => t('Reload program information'),
+          '#description' => t("This lets you refresh the information about which program was playing at this time. This can be useful when the program information was incorrectly retreived or retreived before changes were made to the schedule."),
+        );
+        // put a reload button on the form so the admin can refresh program
+        // information that was retreived incorrectly or before changes were
+        // made to the schedule. this is processed in station_archive_nodeapi()
+        // under the $op == 'prepare'.
+        $form['station_archive']['refresh']['reload'] = array(
+          '#type' => 'button',
+          '#value' => t('Reload Program'),
+        );
+        $form['station_archive']['permanent'] = array(
+          '#type' => 'checkbox',
+          '#title' => t('In permanent archive'),
+          '#default_value' => empty($node->station_archive['permanent']) ? FALSE : TRUE,
+          '#description' => t("If this is checked, this recording will not be deleted during the Station Archive's clean up of old recordings."),
+        );
+        $form['#validate'][] = 'station_archive_node_form_validate';
+      }
+    }
+  }
+}
+
+function station_archive_node_form_validate(&$form, &$form_state) {
+  // If they clicked the button, reload the program information
+  if (isset($form_state['clicked_button']['#value']) && t('Reload Program') == $form_state['clicked_button']['#value']) {
+    $gmt_timestamp = isset($form_state['values']['station_archive']['aired']) ? $form_state['values']['station_archive']['aired'] : time();
+    // get a timestamp that's correct for the timezone
+    $local_timestamp = station_local_ts($gmt_timestamp);
+    $prettydate = date('ga \o\n M jS, Y', $local_timestamp);
+
+    // connect to the station module and find program info based on timestamp
+    $schedule = station_default_schedule();
+    $program = station_get_program_at($gmt_timestamp, $schedule['nid']);
+    if ($program === FALSE) {
+      // couldn't get the program info, configuation error?
+      drupal_set_error(t("Couldn't load the program metadata from the schedule."));
+      break;
+    }
+    elseif ($program === NULL) {
+      // nothing is scheduled...
+      // if we've got no program use the default metadata
+      $program_nid = 0;
+      $audio_tags['title'] = variable_get('station_archive_unscheduled_title', t('DJ Auto mix'));
+    }
+    else {
+      // we've got program information
+      $djs = array();
+      if (!empty($program->field_station_program_dj)) {
+        foreach ($program->field_station_program_dj as $entry) {
+          $user = user_load($entry);
+          $djs[] = $user->name;
+        }
+      }
+      $program_nid = $program->nid;
+      $audio_tags['title'] = $program->title;
+      $audio_tags['artist'] = station_anded_list($djs);
+      $audio_tags['genre'] = isset($program->field_station_program_genre[0]['value']) ? $program->field_station_program_genre[0]['value'] : '';
+      $audio_tags['url_source'] = $program->node_url;
+    }
+    $audio_tags['year'] = date('Y', $local_timestamp);
+    $audio_tags['comment'] = t('Recorded at @date', array('@date' => $prettydate));
+
+    // audio metadata tags
+    $form_state['values']['audio_tags'] = $audio_tags;
+    // archive program nid (this won't work if there isn't already a copy
+    // of the program in station_archive_program).
+    $form_state['values']['station_archive']['program_nid'] = $program_nid;
+    // taxonomy
+    $vid = _station_archive_get_vid();
+    $form_state['values']['taxonomy'][$vid] = _station_archive_get_taxonomy($local_timestamp);
+    // promotion
+    $form_state['values']['promote'] = (int) ($program && variable_get('station_archive_promote_scheduled', 1));
+
+    drupal_set_message(t("The program information has been reloaded from the schedule. Verify that it is correct and save the changes."));
+  }
+}
+
+/**
+ * Create form elements to display the station archive information for an audio
+ * node.
+ *
+ * @param $node
+ *   Audio node object.
+ * @return
+ *   Array of form information.
+ */
+function station_archive_node_info_form($node) {
+  $form = array();
+  if (isset($node->station_archive)) {
+    $form['station_archive']['aired'] = array(
+      '#type' => 'item',
+      '#title' => t('Air date'),
+      '#value' => format_date($node->station_archive['aired'], 'large'),
+      '#description' => t("The date the program first aired."),
+      '#weight' => -1,
+    );
+    $form['station_archive']['imported'] = array(
+      '#type' => 'item',
+      '#title' => t('Imported on'),
+      '#value' => format_date($node->station_archive['imported'], 'large'),
+      '#description' => t('This is the date the audio was actually imported to the archive.'),
+      '#weight' => 0,
+    );
+    if (variable_get('station_archive_cleanup_old', 1)) {
+      if ($node->station_archive['permanent']) {
+        $form['station_archive']['deletion'] = array(
+          '#type' => 'item',
+          '#title' => t('Deletion not scheduled'),
+          '#description' => t("This audio is currently in the permanent archive and will not be removed as part of the normal cleanup process."),
+          '#weight' => 1,
+        );
+      }
+      else {
+        $max_age = variable_get('station_archive_max_age', 604800);
+        $delete = $node->station_archive['imported'] + $max_age;
+        $form['station_archive']['deletion'] = array(
+          '#type' => 'item',
+          '#title' => t('Deletion scheduled for'),
+          '#value' => format_date($delete, 'large'),
+          '#description' => t("The administrator has specified that archived recordings will be removed after being posted for %interval.", array('%interval' => format_interval($max_age))),
+          '#weight' => 1,
+        );
+      }
+    }
+  }
+  return $form;
+}
+
+/**
+ * Implementation of hook_cron().
+ *
+ * Remove old files, import new ones.
+ */
+function station_archive_cron() {
+  // HACK: we overwrite the user so that the cron user can get around the
+  // permissions check and delete old audio nodes.
+  global $user;
+  $olduser = $user;
+  $user = user_load(array('uid' => 1));
+
+  if (variable_get('station_archive_cleanup_old', 1) == 1) {
+    _station_archive_delete_old_nodes();
+  }
+  if (variable_get('station_archive_import_new', 1) == 1) {
+    _station_archive_import_files();
+  }
+
+  _station_archive_update_program_list();
+
+  // restore the old user so we don't screw something else up in the cron run
+  $user = $olduser;
+}
+
+/**
+ * Find and delete old archived audio nodes.
+ *
+ * We need to make sure we only delete nodes created by this module. So, we
+ * search look at nodes included in our taxonomy.
+ */
+function _station_archive_delete_old_nodes() {
+  $cutoff = time() - variable_get('station_archive_max_age', 604800);
+  $result = db_query('SELECT n.nid, n.title FROM {node} n INNER JOIN {station_archive_item} sa ON n.nid = sa.audio_nid WHERE sa.permanent = 0 AND sa.imported < %d', $cutoff);
+  while ($node = db_fetch_object($result)) {
+    watchdog('stationarchive', 'Removing %title from the archive.', array('%title' => $node->title), WATCHDOG_NOTICE);
+    node_delete($node->nid);
+  }
+}
+
+/**
+ * Scan the import directory looking for MP3s to import.
+ */
+function _station_archive_import_files() {
+  // locate new mp3s in the import directory
+  if ($dirpath = variable_get('station_archive_import_dir', drupal_get_path('module', 'station_archive') .'/import')) {
+    $files = file_scan_directory($dirpath, '[0-9]+\.(mp3|ogg)$');
+    foreach ($files as $file) {
+      // try to avoid php's script timeout with a bunch of large files or
+      // a slow machine
+      set_time_limit(0);
+
+      $cuefile = dirname($file->filename) .'/'. $file->name .'.cue';
+      // if there's a .cue file, it's still being downloaded, we'll get it on
+      // the next cron call.
+      if (!file_exists($cuefile)) {
+        watchdog('stationarchive', 'Attempting to import %filename into the archive.', array('%filename' => $file->filename), WATCHDOG_NOTICE);
+        $status = _station_archive_add_file($file);
+        // if there was a problem stop the import
+        if (!$status) {
+          return;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Update the entries in the {station_archive_program} table.
+ *
+ * Views uses the {station_archive_program} to group audio nodes to what may be
+ * remote programs. This function keeps it up to date.
+ */
+function _station_archive_update_program_list() {
+  // Use the local schedule if one is available.
+  if (module_exists('station_schedule')) {
+    $programs = station_schedule_get_program_list();
+  }
+  else {
+    // Try to connect to a remote schedule via XMLRPC for program information.
+    // If they haven't provided a url we can't retreive any data.
+    if (!$url = variable_get('station_remote_schedule_url', '')) {
+      return FALSE;
+    }
+    $programs = xmlrpc(check_url($url .'/xmlrpc.php'), 'station.program.get.list');
+    if (xmlrpc_errno()) {
+      watchdog('station_archive', t('Failed to load program listing remotely. Error %code : %message', array('%code' => xmlrpc_errno(), '%message' => xmlrpc_error_msg())), WATCHDOG_ERROR);
+      return FALSE;
+    }
+  }
+
+  // Insert a program for unschedule times.
+  $programs[0] = array(
+    'nid' => 0,
+    'title' => variable_get('station_archive_unscheduled_title', t('DJ Auto mix')),
+  );
+
+  foreach ($programs as $program) {
+    $program['program_nid'] = $program['nid'];
+    db_query("DELETE FROM {station_archive_program} WHERE program_nid = %d", $program['program_nid']);
+    drupal_write_record('station_archive_program', $program);
+  }
+}
+
+ /**
+ * Add a file to the archive.
+ *
+ * Create an audio node for an mp3 or ogg file that is named with an hour's
+ * timestamp. Use the timestamp to load the program information.
+ *
+ * @param $file
+ *   Drupal file object.
+ * @return
+ *   Boolean indicating success.
+ */
+function _station_archive_add_file($file) {
+  // extract the timestamp from the filename (should be simply timestamp.mp3)
+  $basename = explode('.', $file->basename);
+  $gmt_timestamp = (int) $basename[0];
+  $file_format = $basename[1];
+  // get a timestamp that's correct for the timezone
+  $local_timestamp = station_local_ts($gmt_timestamp);
+  $prettydate = date('ga \o\n M jS, Y', $local_timestamp);
+
+  // connect to the station module and find program info based on timestamp
+  $schedule = station_default_schedule();
+  $program = station_get_program_at($gmt_timestamp, $schedule['nid']);
+  if ($program === FALSE) {
+    // couldn't get the program info, configuation error?
+    watchdog('stationarchive', "Couldn't load the program metadata. We'll retry the import on the next cron run.", array(), WATCHDOG_WARNING);
+    return FALSE;
+  }
+  elseif ($program == NULL) {
+    // nothing is scheduled...
+    // ...check if they've elected to delete unscheduled programs, do so.
+    if (variable_get('station_archive_delete_unscheduled', 0)) {
+      file_delete($file->filename);
+      watchdog('stationarchive', 'Deleted audio that was recorded during unscheduled time. Filename %filename', array('%filename' => $file->filename), WATCHDOG_NOTICE);
+      return TRUE;
+    }
+    // if we've got no program use the default metadata
+    $program_nid = 0;
+    $program_title = variable_get('station_archive_unscheduled_title', t('DJ Auto mix'));
+  }
+  elseif (!$program->may_archive) {
+    // The program scheduled at this time is marked as non-archivable. We'll
+    // delete the file and log it.
+    file_delete($file->filename);
+    watchdog('stationarchive', 'Deleted %program-title, it was marked as non-archivable.', array('%program-title' => $program->title), WATCHDOG_NOTICE);
+    return TRUE;
+  }
+  else {
+    // we've got program information
+    $program_nid = (int) $program->nid;
+    $program_title = $program->title;
+    $djs = array();
+    if (!empty($program->field_station_program_dj)) {
+      foreach ($program->field_station_program_dj as $entry) {
+        $user = user_load($entry);
+        $djs[] = $user->name;
+      }
+    }
+    $audio_tags['title'] = $program->title;
+    $audio_tags['artist'] = station_anded_list($djs);
+    $audio_tags['genre'] = isset($program->field_station_program_genre[0]['value']) ? $program->field_station_program_genre[0]['value'] : '';
+    $audio_tags['url_source'] = $program->node_url;
+  }
+  $audio_tags['title'] = $program_title;
+  $audio_tags['year'] = date('Y', $local_timestamp);
+  $audio_tags['comment'] = t('Recorded at @date', array('@date' => $prettydate));
+
+  // find/create the proper taxonomic terms based on day and hour
+  $taxonomy = _station_archive_get_taxonomy($local_timestamp);
+  // then create a new audio node with it
+  $title_format = variable_get('station_archive_title_format', '[audio-tag-title-raw]');
+  $node = audio_api_insert($file->filename, $title_format, '', $audio_tags, $taxonomy);
+
+  // make any other changes to the node...
+  $node->station_archive = array(
+    'archived' => 1,
+    'program_nid' => $program_nid,
+    'aired' => $gmt_timestamp,
+    'imported' => time(),
+    'permanent' => 0,
+  );
+  $node->audio_file['downloadable'] = 1;
+  $node->created = $gmt_timestamp;
+  // don't bother to check for promotion if there's no metadata
+  $node->promote = (int) ($program && variable_get('station_archive_promote_scheduled', 1));
+  // keep the timestamp as the filename so we can re-import again if needed but
+  // store a more readable filename for the user.
+  $node->audio_file['file_name'] = str_replace(' ', '_', $audio_tags['title'] ." ($prettydate).$file_format");
+
+  // ... and save it
+  $node = node_submit($node);
+  node_save($node);
+
+  watchdog('stationarchive', 'Added %title to the archive.', array('%title' => $program_title), WATCHDOG_NOTICE, l(t('view'), 'node/'. $node->nid));
+
+  return TRUE;
+}
+
+/**
+ * Find/create the term ids for a day and hour based on a timestamp.
+ *
+ * @param $local_timestamp
+ *   A timestamp that's been adjusted for the local timezone
+ * @return
+ *   Array with day and hour term ids.
+ *
+ * @see station_local_ts().
+ */
+function _station_archive_get_taxonomy($local_timestamp) {
+  $vid = _station_archive_get_vid();
+  $day = date('w', $local_timestamp);
+  $hour = date('G', $local_timestamp);
+  $minute = station_minute_from_day_hour($day, $hour);
+  $time = station_time_from_minute($minute);
+
+  $dayterm = _station_archive_get_day_term($vid, $day);
+  if (!$dayterm) {
+    $dayterm = array(
+      'vid' => $vid,
+      'name' => $time['w'],
+      'weight' => $day - 7,
+    );
+    taxonomy_save_term($dayterm);
+  }
+
+  $hourterm = _station_archive_get_hour_term($dayterm, $hour);
+  if (!$hourterm) {
+    $hourterm = array(
+      'vid' => $dayterm['vid'],
+      'parent' => $dayterm['tid'],
+      'name' => $time['time'] . $time['a'],
+      'weight' => $hour,
+    );
+    taxonomy_save_term($hourterm);
+  }
+
+  return array($dayterm['tid'], $hourterm['tid']);
+}
+
+/**
+ * Find or create a Station Archive vocabulary ID.
+ *
+ * @return
+ *   Vocabulary ID.
+ */
+function _station_archive_get_vid() {
+  $vid = variable_get('station_archive_vid', '');
+  if (empty($vid)) {
+    // Check to see if a stationarchive vocabulary exists
+    $vid = db_result(db_query("SELECT vid FROM {vocabulary} WHERE module = '%s'", 'station_archive'));
+    if (!$vid) {
+      $vocab = array(
+        'name' => 'Station Archive',
+        'description' => t("This vocabulary is used by the Station Archive module to track the audio nodes it has added."),
+        'help' => t("Do not add nodes to this vocabulary unless you want the station archive module to delete them when they're older than the maximum archive age."),
+        'multiple' => 1,
+        'required' => 0,
+        'hierarchy' => 1,
+        'relations' => 0,
+        'module' => 'station_archive',
+        'nodes' => array('audio' => 1),
+      );
+      taxonomy_save_vocabulary($vocab);
+      $vid = $vocab['vid'];
+    }
+    variable_set('station_archive_vid', $vid);
+  }
+  return $vid;
+}
+
+/**
+ * Implementation of hook_taxonomy().
+ *
+ * Delete our vocabulary variable if the vocabulary is deleted.
+ */
+function station_archive_taxonomy($op, $type, $object = NULL) {
+  if ($op == 'delete' && $type == 'vocabulary' && $object->vid == _station_archive_get_vid())  {
+    variable_del('station_archive_vid');
+  }
+}
+
+/**
+ * Give a string with hours return an array of vocabulary term ids for the
+ * given hours.
+ *
+ * @param $vid
+ *   integer vocabulary id
+ * @param $hour_string
+ *   string with hours values, integers from 1 to 168 separated by spaces
+ */
+function _station_archive_get_hour_tids($vid, $hour_string = '') {
+  $ids = array();
+  foreach (explode(' ', $hour_string) as $id) {
+    $id = (integer) $id;
+    if ($id > 0 && $id <= 24*7) {
+      $ids[] = $id;
+    }
+  }
+  sort($ids);
+
+  $tids = array();
+  foreach ($ids as $id) {
+    $day = (integer) (($id - 1) / 24);
+    $hour = ($id - 1) % 24;
+
+    if ($dayterm = _station_archive_get_day_term($vid, $day)) {
+      if ($hourterm = _station_archive_get_hour_term($dayterm, $hour)) {
+        $tids[] = $hourterm['tid'];
+      }
+    }
+  }
+
+  return $tids;
+}
+
+/**
+ * Find the taxonomy term for a day.
+ *
+ * @param $vid
+ *   Our vocabulary ID.
+ * @param $day
+ *   Integer day between 0 and 6.
+ * @return
+ *   Array with a day's taxonomy term, FALSE if it doesn't exist.
+ */
+function _station_archive_get_day_term($vid, $day) {
+  $dayname = station_day_name($day);
+  $result = db_query(db_rewrite_sql("SELECT t.tid, t.* FROM {term_data} t WHERE t.vid = %d AND LOWER('%s') LIKE LOWER(name)", 't', 'tid'), array($vid, trim($dayname)));
+  return db_fetch_array($result);
+}
+
+/**
+ * Find or create taxonomy term for a day.
+ *
+ * @param $dayterm
+ *   Array day taxonomy term.
+ * @param $hour
+ *   Integer hour between 0 and 23.
+ * @return
+ *   Array with an hour's taxonomy term, false if it doesn't exist.
+ */
+function _station_archive_get_hour_term($dayterm, $hour) {
+  $minute = station_minute_from_day_hour(0, $hour);
+  $time = station_time_from_minute($minute);
+  $hourname = $time['time'] . $time['a'];
+  $result = db_query(db_rewrite_sql("SELECT d.tid, d.* FROM {term_data} d INNER JOIN {term_hierarchy} h ON d.tid = h.tid WHERE d.vid = %d AND h.parent = %d AND LOWER('%s') LIKE LOWER(name)", 't', 'tid'), array($dayterm['vid'], $dayterm['tid'], trim($hourname)));
+  return db_fetch_array($result);
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function station_archive_views_api() {
+  return array(
+    'api' => 2.0,
+    'path' => drupal_get_path('module', 'station_archive') . '/views',
+  );
+}

@@ -1,0 +1,515 @@
+<?php
+
+// $Id: station_schedule.install,v 1.29 2009/11/28 22:06:44 drewish Exp $
+
+/**
+ * Implementation of hook_schema().
+ */
+function station_schedule_install() {
+  drupal_install_schema('station_schedule');
+
+  // To deal with the possibility that we're being installed at the same time
+  // as CCK and the field modules we depend on, we need to manually enable the
+  // the modules to ensure they're available before we create our fields.
+  module_enable(array('content', 'userreference'));
+
+  $roles = user_roles(TRUE);
+  $dj_role = variable_get('station_schedule_dj_role', DRUPAL_AUTHENTICATED_RID);
+  $dj_title = variable_get('station_schedule_dj_title', 'DJs');
+
+  # var_export(content_fields('field_station_program_dj', 'station_program'));
+  $dj_field = array(
+    'field_name' => 'field_station_program_dj',
+    'type_name' => 'station_program',
+    'display_settings' =>
+    array(
+      'label' =>
+      array(
+        'format' => 'above',
+      ),
+      'teaser' =>
+      array(
+        'format' => 'default',
+      ),
+      'full' =>
+      array(
+        'format' => 'default',
+      ),
+      0 =>
+      array(
+        'format' => 'above',
+      ),
+      'token' =>
+      array(
+        'format' => 'default',
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'userreference',
+    'required' => '0',
+    'multiple' => '1',
+    'db_storage' => '0',
+    'module' => 'userreference',
+    'active' => '1',
+    'locked' => '1',
+    'columns' =>
+    array(
+      'uid' =>
+      array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+    ),
+    'referenceable_roles' =>
+    array(
+      $dj_role => $dj_role,
+    ),
+    'referenceable_status' =>
+    array(
+      1 => 1,
+      0 => 0,
+    ),
+    'advanced_view' => '',
+    'advanced_view_args' => '',
+    'widget' =>
+    array(
+      'reverse_link' => 0,
+      'default_value' =>
+      array(
+        0 =>
+        array(
+          'uid' => NULL,
+          '_error_element' => 'default_value_widget][field_station_program_dj][0][uid][uid',
+        ),
+      ),
+      'default_value_php' => NULL,
+      'label' => $dj_title,
+      'weight' => '1',
+      'description' => st('Enter the names of users you\'d like to add as @dj-title. The users must be members of the %role-name role.', array('@dj-title' => $dj_title, '%role-name' => $roles[$dj_role])),
+      'type' => 'userreference_autocomplete',
+      'module' => 'userreference',
+    ),
+  );
+
+  // Create the fields.
+  module_load_include('inc', 'content', 'includes/content.crud');
+  content_field_instance_create($dj_field);
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function station_schedule_uninstall() {
+  if (module_exists('content')) {
+    module_load_include('inc', 'content', 'includes/content.crud');
+    content_field_instance_delete('field_station_program_genre', 'station_program');
+    content_field_instance_delete('field_station_program_link', 'station_program');
+  }
+
+  drupal_uninstall_schema('station_schedule');
+
+  variable_del('station_schedule_redirect_old_urls');
+  variable_del('station_schedule_default');
+
+  // Remove any stream files.
+  file_scan_directory(file_create_path('station'), '.*\.m3u', array('.', '..', 'CVS'), 'file_delete', FALSE);
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function station_schedule_schema() {
+  $schema['station_schedule'] = array(
+    'description' => t('Information about station schedules.'),
+    'fields' => array(
+      'nid' => array(
+        'description' => t("The schedule's {node}.nid."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'increment' => array(
+        'description' => t('Increment of the schedule block size in minutes.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'streams' => array(
+        'description' => t('Web stream URLs.'),
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'serialize' => TRUE,
+      ),
+      'unscheduled_message' => array(
+        'description' => t('Message to display during unscheduled periods.'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+
+  $schema['station_schedule_item'] = array(
+    'description' => t('Information about station schedules.'),
+    'fields' => array(
+      'iid' => array(
+        'description' => t('The primary identifier a station schedule item.'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'schedule_nid' => array(
+        'description' => t("The schedule's {node}.nid."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'program_nid' => array(
+        'description' => t("The program's {node}.nid."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'start' => array(
+        'description' => t("Starting minute from Sunday midnight."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'finish' => array(
+        'description' => t("Finishing minute from Sunday midnight."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'may_archive' => array(
+        'description' => t("Can this item be scaved in the archive?"),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'size' => 'tiny',
+        'default' => 0,
+      ),
+    ),
+    'indexes' => array(
+      'station_schedule_start'   => array('schedule_nid', 'start'),
+      'station_schedule_program' => array('schedule_nid', 'program_nid'),
+    ),
+    'primary key' => array('iid'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_update_last_removed().
+ */
+function station_schedule_update_last_removed() {
+  // We've removed the 5.x-1.x version of mymodule, including database updates.
+  // The next update function is mymodule_update_5200().
+  return 101;
+}
+
+/**
+ * Rename station_schedule to station_schedule_item and rename sid to iid. Add
+ * a new schedule_nid field that refers to the schedule. Then create a
+ * station_schedule table and update all schedule items to be a member of it.
+ */
+function station_schedule_update_5200() {
+  $ret = array();
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      // Rename {station_schedule} to {station_schedule_item}, sid to iid and
+      // add schedule_nid so we can join to the new {station_schedule}.
+      $ret[] = update_sql('ALTER TABLE {station_schedule} RENAME TO {station_schedule_item}');
+      $ret[] = update_sql('ALTER TABLE {station_schedule_item} CHANGE COLUMN `sid` `iid` INTEGER UNSIGNED NOT NULL DEFAULT 0');
+      $ret[] = update_sql('ALTER TABLE {station_schedule_item} ADD COLUMN `schedule_nid` INTEGER UNSIGNED NOT NULL DEFAULT 0 FIRST');
+
+      // Move the sequence.
+      db_query('LOCK TABLES {sequences} WRITE');
+      $ret[] = update_sql("DELETE FROM {sequences} WHERE name = '{station_schedule_item}_iid'");
+      $ret[] = update_sql("UPDATE {sequences} SET name = '{station_schedule_item}_iid' WHERE name = '{station_schedule}_sid'");
+      db_query('UNLOCK TABLES');
+
+      // Create the table for schedule nodes.
+      $ret[] = update_sql("
+        CREATE TABLE {station_schedule} (
+          `nid` int unsigned NOT NULL default '0',
+          `increment` int unsigned NOT NULL default '0',
+          `streams` longtext,
+          PRIMARY KEY(`nid`)
+        ) /*!40100 DEFAULT CHARACTER SET utf8 */;
+      ");
+
+      // Create a new node for the existing schedule. We can't do it the easy
+      // with node_save() because it'll call station_schedule_insert() which
+      // references fields added in later updates.
+      $node = new stdClass();
+      $node->nid = db_next_id('{node}_nid');
+      $node->vid = db_next_id('{node_revisions}_vid');
+      $node->created = time();
+      $node->changed = time();
+      $node->uid = 1;
+      $node->title = t('Default');
+      db_query("INSERT INTO {node} (nid, vid, title, type, uid, status, created, changed, comment, promote, sticky)
+        VALUES (%d, %d, '%s', 'station_schedule', 1, %d, %d, %d, 0, 0, 0)",
+        $node->nid, $node->vid, $node->title, $node->uid, $node->created, $node->changed
+      );
+      db_query("INSERT INTO {node_revisions} (nid, vid, title, body, teaser, timestamp, uid, format, log)
+        VALUES (%d, %d, '%s', '', '', %d, %d, 0, '')",
+        $node->nid, $node->vid, $node->title, $node->created, $node->uid
+      );
+      db_query("INSERT INTO {station_schedule} (nid, increment) VALUES (%d, %d)", $node->nid, variable_get('station_schedule_increment', 60));
+
+      // Don't need this anymore.
+      variable_del('station_schedule_increment');
+
+      // Make the new schedule the default.
+      variable_set('station_schedule_default', $node->nid);
+      $ret[] = update_sql("UPDATE {station_schedule_item} SET schedule_nid = ". (int) $node->nid);
+
+      // Fix the keys.
+      $ret[] = update_sql('ALTER TABLE {station_schedule_item} DROP INDEX `station_schedule_start`');
+      $ret[] = update_sql('ALTER TABLE {station_schedule_item} DROP INDEX `station_schedule_program`');
+      $ret[] = update_sql('ALTER TABLE {station_schedule_item} ADD INDEX `station_schedule_start` (`schedule_nid`, `start`)');
+      $ret[] = update_sql('ALTER TABLE {station_schedule_item} ADD INDEX `station_schedule_program` (`schedule_nid`, `program_nid`)');
+    break;
+  }
+  return $ret;
+}
+
+/**
+ * Existing sites will want to preserve the old URLs by default.
+ */
+function station_schedule_update_5201() {
+  variable_set('station_schedule_redirect_old_urls', 1);
+  return array();
+}
+
+/**
+ * Move the unscheduled message from variable into the schedule table.
+ */
+function station_schedule_update_5202() {
+  $ret = array();
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      $ret[] = update_sql("ALTER TABLE {station_schedule} ADD COLUMN `unscheduled_message` VARCHAR(255) NOT NULL default '' AFTER `increment`");
+
+      $unscheduled_message = variable_get('station_block_unschedule',  t("We're on autopilot."));
+      db_query("UPDATE {station_schedule} SET unscheduled_message = '%s'", $unscheduled_message);
+      variable_del('station_block_unschedule');
+
+      break;
+  }
+  return $ret;
+}
+
+/**
+ * Move the streams from variables into the schedule table.
+ */
+function station_schedule_update_5203() {
+  $ret = array();
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      $ret[] = update_sql("ALTER TABLE {station_schedule} ADD COLUMN `streams` longtext AFTER `increment`");
+
+      $streams = array();
+      if ($high = variable_get('station_stream_high_url', '')) {
+        $streams['high'] = array(
+           'name' => t('High'),
+           'description' => t('High bandwidth stream'),
+           'urls' => $high,
+        );
+      }
+      if ($low = variable_get('station_stream_low_url', '')) {
+        $streams['low'] = array(
+          'name' => t('Low'),
+          'description' => t('Low bandwidth stream'),
+          'urls' => $low,
+        );
+      }
+      if (count($streams)) {
+        db_query("UPDATE {station_schedule} SET streams = '%s'", serialize($streams));
+      }
+      variable_del('station_stream_high_url');
+      variable_del('station_stream_low_url');
+
+      break;
+  }
+  return $ret;
+}
+
+function station_schedule_update_6000() {
+  $ret = array();
+
+  // Change the iid field to a serial type
+  // FROM `iid` int unsigned NOT NULL default '0' to
+  $iid_field = array(
+    'description' => t('The primary identifier a station schedule item.'),
+    'type' => 'serial',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+  );
+  db_change_field($ret, 'station_schedule_item', 'iid', 'iid', $iid_field);
+
+  return $ret;
+}
+
+/**
+ * Move the program's DJ list into a node reference field.
+ */
+function station_schedule_update_6001() {
+  $ret = array();
+
+  // Make sure they've enabled CCK and link modules
+  if (!module_exists('content') || !module_exists('userreference')) {
+    $ret['#abort'] = array('success' => FALSE, 'query' => t('Station Playlist now requires CCK and User Reference modules. Some updates are still pending.<br/>Please re-run the update script.'));
+    return $ret;
+  }
+  // Make sure there's no pending CCK updates
+  drupal_load('module', 'content');
+  if ($abort = content_check_update('userreference')) {
+    return $abort;
+  }
+
+  $roles = user_roles(TRUE);
+  $dj_role = variable_get('station_schedule_dj_role', DRUPAL_AUTHENTICATED_RID);
+  $dj_title = variable_get('station_schedule_dj_title', 'DJs');
+
+  # var_export(content_fields('field_station_program_dj', 'station_program'));
+  $dj_field = array(
+    'field_name' => 'field_station_program_dj',
+    'type_name' => 'station_program',
+    'display_settings' =>
+    array(
+      'label' =>
+      array(
+        'format' => 'above',
+      ),
+      'teaser' =>
+      array(
+        'format' => 'default',
+      ),
+      'full' =>
+      array(
+        'format' => 'default',
+      ),
+      0 =>
+      array(
+        'format' => 'above',
+      ),
+      'token' =>
+      array(
+        'format' => 'default',
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'userreference',
+    'required' => '0',
+    'multiple' => '1',
+    'db_storage' => '0',
+    'module' => 'userreference',
+    'active' => '1',
+    'locked' => '1',
+    'columns' =>
+    array(
+      'uid' =>
+      array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+    ),
+    'referenceable_roles' =>
+    array(
+      $dj_role => $dj_role,
+    ),
+    'referenceable_status' =>
+    array(
+      1 => 1,
+      0 => 0,
+    ),
+    'advanced_view' => '',
+    'advanced_view_args' => '',
+    'widget' =>
+    array(
+      'reverse_link' => 0,
+      'default_value' =>
+      array(
+        0 =>
+        array(
+          'uid' => NULL,
+          '_error_element' => 'default_value_widget][field_station_program_dj][0][uid][uid',
+        ),
+      ),
+      'default_value_php' => NULL,
+      'label' => $dj_title,
+      'weight' => '1',
+      'description' => t('Enter the names of users you\'d like to add as @dj-title. The users must be members of the %role-name role.', array('@dj-title' => $dj_title, '%role-name' => $roles[$dj_role])),
+      'type' => 'userreference_autocomplete',
+      'module' => 'userreference',
+    ),
+  );
+
+  // Create the fields.
+  module_load_include('inc', 'content', 'includes/content.crud');
+  content_field_instance_create($dj_field);
+
+
+  // Now the tricky part is to migrate the data.
+
+  // NOTE: This differes from the copy/pasted version of this update because
+  // we need to ensure the delta is unique
+
+  // Might be needlessly escaping the names here but it shouldn't hurt
+  // anything.
+  $db_info    = content_database_info($dj_field);
+  $to_table   = db_escape_table($db_info['table']);
+  $to_col     = db_escape_table($db_info['columns']['uid']['column']);
+
+  // We've got to assume that CCK's table might only have records for half of
+  // the nodes we're migrating so the strategy is to INSERT then UPDATE.
+  $ret[] = update_sql("INSERT INTO {{$to_table}} (nid, vid, delta)
+    SELECT n.nid, n.vid, f.uid FROM {station_dj} f INNER JOIN {node} n ON f.program_nid = n.nid
+    WHERE NOT EXISTS ( SELECT * FROM {{$to_table}} t WHERE t.nid = f.program_nid AND t.delta = f.uid)");
+  $ret[] = update_sql("UPDATE {{$to_table}} t INNER JOIN {station_dj} f ON t.nid = f.program_nid AND t.delta = f.uid
+    SET t.$to_col = f.uid");
+
+  // Since these are now on the field we don't really need them any more..
+  variable_del('station_schedule_dj_role');
+  variable_del('station_schedule_dj_title');
+
+#  db_drop_table($ret, 'station_dj');
+
+  return $ret;
+}
+
+/**
+ * Resave the schedules so that the webstream links are saved as files.
+ */
+function station_schedule_update_6002() {
+  $result = db_query("SELECT n.nid FROM {node} n INNER JOIN {station_schedule} ss ON n.nid = ss.nid WHERE n.type = 'station_schedule'");
+  while ($node = db_fetch_array($result)) {
+    $node = node_load($node);
+    if ($node->nid) {
+      $node = node_validate($node);
+      $node = node_submit($node);
+      node_save($node);
+    }
+  }
+
+  return array();
+}

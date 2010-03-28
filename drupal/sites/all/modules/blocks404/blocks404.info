@@ -1,0 +1,13 @@
+; $Id: blocks404.info,v 1.2 2009/01/06 06:39:55 johnalbin Exp $
+
+name = "404 Blocks"
+description = "On a 404 page, ensure blocks and Primary links are displayed properly."
+
+core = 6.x
+
+; Information added by drupal.org packaging script on 2009-07-01
+version = "6.x-1.1"
+core = "6.x"
+project = "blocks404"
+datestamp = "1246438232"
+

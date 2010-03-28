@@ -1,0 +1,17 @@
+; $Id: station_playlist.info,v 1.6 2008/11/28 19:23:51 drewish Exp $
+name = Station Playlist
+description = Provides a program playlist node type.
+package = Station
+core = 6.x
+dependencies[] = station
+dependencies[] = station_program
+dependencies[] = views
+dependencies[] = content
+dependencies[] = nodereference
+dependencies[] = date
+; Information added by drupal.org packaging script on 2010-01-12
+version = "6.x-2.0-beta3"
+core = "6.x"
+project = "station"
+datestamp = "1263282005"
+

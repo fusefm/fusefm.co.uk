@@ -1,0 +1,33 @@
+<?php
+// $Id: ldapprov_invite_og.install,v 1.3 2009/01/20 09:56:43 miglius Exp $
+
+/**
+ * @file
+ * ldapprov_invite_og module installation and upgrade code.
+ */
+
+//////////////////////////////////////////////////////////////////////////////
+// Core API hooks
+
+/**
+ * Implementation of hook_enable().
+ */
+function ldapprov_invite_og_enable() {
+  drupal_set_message(t('ldapprov_invite_og module successfully installed. Please review the available <a href="@settings">configuration settings</a>.', array('@settings' => url('admin/settings/ldap/ldapprov/invite/og'))));
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function ldapprov_invite_og_install() {
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function ldapprov_invite_og_uninstall() {
+  variable_del('ldapprov_invite_og_tab');
+  variable_del('ldapprov_invite_og_mail_invite_subject');
+  variable_del('ldapprov_invite_og_mail_invite_body');
+}
+

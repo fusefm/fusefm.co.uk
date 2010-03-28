@@ -1,0 +1,16 @@
+; $Id: station_program.info,v 1.5 2008/11/27 06:50:25 drewish Exp $
+name = Station Program
+description = Provides a simple program node for schedule.
+package = Station
+core=6.x
+dependencies[] = station
+dependencies[] = views
+dependencies[] = content
+dependencies[] = link
+dependencies[] = text
+; Information added by drupal.org packaging script on 2010-01-12
+version = "6.x-2.0-beta3"
+core = "6.x"
+project = "station"
+datestamp = "1263282005"
+

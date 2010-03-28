@@ -1,0 +1,16 @@
+; $Id: ldapprov_invite_og.info,v 1.1 2008/09/25 09:58:18 miglius Exp $
+name = Provisioning OG invites
+description = Implements OG invites for LDAP users provisioning.
+package = LDAP integration
+dependencies[] = ldapprov_invite
+dependencies[] = og
+core = 6.x
+php = 5.2
+
+
+; Information added by drupal.org packaging script on 2009-08-12
+version = "6.x-1.0-beta1"
+core = "6.x"
+project = "ldap_provisioning"
+datestamp = "1250071855"
+

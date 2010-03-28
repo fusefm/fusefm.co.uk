@@ -1,0 +1,11 @@
+<?php
+// $Id: blocks404.install,v 1.1 2009/01/06 06:39:55 johnalbin Exp $
+
+/**
+ * Implements hook_disable().
+ */
+function blocks404_disable() {
+  if (variable_get('site_404', '') == BLOCKS404_PAGE) {
+    variable_set('site_404', '');
+  }
+}

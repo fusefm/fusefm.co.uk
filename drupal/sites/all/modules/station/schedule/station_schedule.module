@@ -1,0 +1,1155 @@
+<?php
+// $Id: station_schedule.module,v 1.94 2009/11/28 23:26:57 drewish Exp $
+
+/**
+ * Implementation of hook_help().
+ */
+function station_schedule_help($path, $arg) {
+  switch ($path) {
+    case 'node/%/schedule':
+      return t('Use this page to make changes to the schedule. You can select which programs air at what time.');
+
+    case 'admin/settings/station/schedule':
+      return t("These settings allow you to configure the station's schedule.");
+
+    case 'node/%/view/%':
+      $output = '';
+      if (station_has_archive()) {
+        $output .= t('The !listen_img listen link will take you to the list of archived copies of a show. The !rss_img link will take you to an RSS feed of the archived copies suitable for podcasting.',
+          array(
+            '!listen_img' => theme('image', drupal_get_path('module', 'station_schedule') .'/images/listen_tiny.gif', 'listen'),
+            '!rss_img' =>  theme('image', drupal_get_path('module', 'station_schedule') .'/images/rss_tiny.gif', 'podcast'),
+          )
+        );
+      }
+      return $output;
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function station_schedule_menu() {
+  $items['admin/settings/station/schedule'] = array(
+    'title' => 'Schedule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('station_schedule_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'station_schedule.admin.inc',
+    'type' => MENU_LOCAL_TASK
+  );
+
+  if (variable_get('station_schedule_redirect_old_urls', 0)) {
+    $items['schedule'] = array(
+      'page callback' => 'station_schedule_redirect_old',
+      'access arguments' => array('access content'),
+      'type' => MENU_CALLBACK,
+    );
+    $items['station/schedule'] = array(
+      'page callback' => 'station_schedule_redirect_old',
+      'access arguments' => array('access content'),
+      'type' => MENU_CALLBACK,
+    );
+  }
+
+  $items['node/%node/view/week'] = array(
+    'title' => 'Week',
+    'page callback' => 'node_page_view',
+    'page arguments' => array(1),
+    'access callback' => 'station_schedule_node_view_access',
+    'access arguments' => array(1),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['node/%node/view/today'] = array(
+    'title' => 'Today',
+    'page callback' => 'station_schedule_goto_today',
+    'page arguments' => array(1),
+    'access callback' => 'station_schedule_node_view_access',
+    'access arguments' => array(1),
+    'file' => 'station_schedule.pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+  // Use a separate variable to set the weights since station_day_name()
+  // may return index values that are not sorted.
+  $weight = 0;
+  foreach (station_day_name() as $day => $dayname) {
+    $items['node/%node/view/'. strtolower($dayname)] = array(
+      'title' => substr($dayname, 0, 3),
+      'page callback' => 'station_schedule_day_page',
+      'page arguments' => array(1, $dayname),
+      'access callback' => 'station_schedule_node_view_access',
+      'access arguments' => array(1),
+      'file' => 'station_schedule.pages.inc',
+      'type' => MENU_LOCAL_TASK,
+      'weight' => $weight++,
+    );
+  }
+  $items['node/%node/schedule'] = array(
+    'title' => 'Alter schedule',
+    'page callback' => 'station_schedule_item_list',
+    'page arguments' => array(1),
+    'access callback' => 'station_schedule_node_update_access',
+    'access arguments' => array(1),
+    'file' => 'station_schedule.edit.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['node/%node/schedule/list'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['node/%node/schedule/add'] = array(
+    'title' => 'Add item',
+    'page callback' => 'station_schedule_item_add',
+    'page arguments' => array(1),
+    'access callback' => 'station_schedule_node_update_access',
+    'access arguments' => array(1),
+    'file' => 'station_schedule.edit.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['node/%node/schedule/%station_schedule_item/edit'] = array(
+    'title' => 'Edit item',
+    'page callback' => 'station_schedule_item_edit',
+    'page arguments' => array(1, 3),
+    'access callback' => 'station_schedule_node_update_access',
+    'access arguments' => array(1),
+    'file' => 'station_schedule.edit.inc',
+    'type' => MENU_CALLBACK
+  );
+  $items['node/%node/schedule/%station_schedule_item/remove'] = array(
+    'title' => 'Remove item',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('station_schedule_item_remove_form', 1, 3),
+    'access callback' => 'station_schedule_node_update_access',
+    'access arguments' => array(1),
+    'file' => 'station_schedule.edit.inc',
+    'type' => MENU_CALLBACK
+  );
+
+  return $items;
+}
+
+function station_schedule_node_view_access($node) {
+  return ($node->type == 'station_schedule' && node_access('view', $node));
+}
+
+function station_schedule_node_update_access($node) {
+  return ($node->type == 'station_schedule' && node_access('update', $node));
+}
+
+
+/**
+ * Implementation of hook_elements().
+ */
+function station_schedule_elements() {
+  $type['station_schedule_daytime'] = array(
+    '#input' => TRUE,
+    '#process' => array('expand_station_schedule_daytime'),
+    '#increment' => 60,
+    '#roll_midnight_back' => FALSE,
+  );
+  $type['station_schedule_daytime_range'] = array(
+    '#input' => TRUE,
+    '#process' => array('expand_station_schedule_daytime_range'),
+    '#default_value' => array('start' => 0, 'finish' => 0),
+    '#increment' => 60,
+  );
+  return $type;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function station_schedule_theme() {
+  return array(
+    'station_schedule_daytime' => array(
+      'arguments' => array('element' => NULL),
+    ),
+    'station_schedule_daytime_range' => array(
+      'arguments' => array('element' => NULL),
+    ),
+    'station_schedule_admin_item' => array(
+      'arguments' => array('node' => NULL, 'item' => NULL),
+      'file' => 'station_schedule.edit.inc',
+    ),
+    'station_schedule_admin_nonitem' => array(
+      'arguments' => array('node' => NULL, 'start' => NULL, 'finish' => NULL),
+      'file' => 'station_schedule.edit.inc',
+    ),
+    'station_schedule_form_streams' => array(
+      'arguments' => array('form' => NULL),
+    ),
+    'station_schedule_hour' => array(
+      'arguments' => array('hour' => NULL),
+      'file' => 'station_schedule.pages.inc',
+    ),
+    'station_schedule_item' => array(
+      'arguments' => array('start' => NULL, 'finish' => NULL, 'program' => NULL),
+      'file' => 'station_schedule.pages.inc',
+    ),
+    'station_schedule_spacer' => array(
+      'arguments' => array('start' => NULL, 'finish' => NULL),
+      'file' => 'station_schedule.pages.inc',
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function station_schedule_perm() {
+  return array(
+    'administer station schedule',
+    'view station schedule content',
+    'create station schedule content',
+    'edit any station schedule content',
+    'edit own station schedule content',
+    'delete any station schedule content',
+  );
+}
+
+/**
+ * Implementation of hook_node_info().
+ */
+function station_schedule_node_info() {
+  return array(
+    'station_schedule' => array(
+      'name' => t('Schedule'),
+      'module' => 'station_schedule',
+      'title_label' => t('Name'),
+      'description' => t('A station schedule.'),
+    )
+  );
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function station_schedule_access($op, $node, $account) {
+  if (user_access('administer station schedule', $account)) {
+    return TRUE;
+  }
+
+  switch ($op) {
+    case 'view':
+      return user_access('view station schedule content', $account);
+
+    case 'create':
+      return user_access('create station schedule content', $account);
+
+    case 'update':
+      if (user_access('edit own station schedule content', $account) && ($account->uid == $node->uid)) {
+        return TRUE;
+      }
+      return user_access('edit any station schedule content', $account);
+
+    case 'delete':
+      return user_access('delete any station schedule content', $account);
+  }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+function station_schedule_form($node) {
+  $type = node_get_types('type', $node);
+
+  $form['title'] = array(
+    '#type' => 'textfield',
+    '#title' => check_plain($type->title_label),
+    '#default_value' => $node->title,
+    '#required' => TRUE,
+    '#maxlength' => 128,
+    '#description' => t("The name of the schedule, e.g. 'AM', 'FM', callsign."),
+  );
+
+  $form['settings']['#tree'] = TRUE;
+  $form['settings']['increment'] = array(
+    '#type' => 'select',
+    '#title' => t('Time increment'),
+    '#default_value' => isset($node->settings['increment']) ? $node->settings['increment'] : 60,
+    '#options' => array(1 => t('1 Minute'), 5 => t('5 Minutes'), 15 => t('15 Minutes'), 30 => t('30 Minutes'), 60 => t('1 Hour'), 120 => t('2 Hours')),
+    '#description' => t("This is the minimum increment that programs can be scheduled in. <strong>Caution:</strong> Increasing this value on an existing schedule will probably cause weirdness."),
+  );
+  $form['settings']['unscheduled_message'] = array(
+    '#type' => 'textfield',
+    '#title' => t('No scheduled programming message'),
+    '#size' => 60,
+    '#maxlength' => 255,
+    '#default_value' => isset($node->settings['unscheduled_message']) ? $node->settings['unscheduled_message'] : t("We're on autopilot."),
+    '#required' =>  TRUE,
+    '#description' => t('This string will appear when no program is currently scheduled.'),
+  );
+  $form['settings']['streams'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Web streams'),
+    '#theme' => 'station_schedule_form_streams',
+    '#collapsible' => TRUE,
+    '#description' => t("If your station has webstreams enter them below."),
+  );
+  if (!isset($node->settings['streams']['new'])) {
+    $node->settings['streams']['new'] = array(
+      'name' => '',
+      'description' => '',
+      'urls' => array(),
+    );
+  }
+  foreach ($node->settings['streams'] as $key => $stream) {
+    $form['settings']['streams'][$key]['name'] = array(
+      '#type' => 'textfield',
+      '#size' => 10,
+      '#default_value' => $stream['name'],
+    );
+    $form['settings']['streams'][$key]['description'] = array(
+      '#type' => 'textfield',
+      '#size' => 20,
+      '#default_value' => $stream['description'],
+    );
+    $form['settings']['streams'][$key]['urls'] = array(
+      '#type' => 'textarea',
+      '#rows' => 2,
+      '#cols' => 20,
+      '#default_value' => empty($stream['urls']) ? '' : implode("\n", $stream['urls']),
+    );
+  }
+
+  if ($type->has_body) {
+    $form['body_filter']['body'] = array(
+      '#type' => 'textarea',
+      '#title' => check_plain($type->body_label),
+      '#default_value' => $node->body,
+      '#rows' => 10,
+      '#required' => ($type->min_word_count > 0),
+      '#description' => t("Description of the schedule."),
+    );
+    $form['body_filter']['format'] = filter_form($node->format);
+  }
+
+  // Stick in out submit handler to put the stream URLs back into an array.
+  $form['#submit'] = array('station_schedule_form_submit');
+
+  return $form;
+}
+
+
+function theme_station_schedule_form_streams($form) {
+  $header = array(t('Name'), t('Description'), t('URLs'));
+  foreach (element_children($form) as $key) {
+    $row = array();
+    $row[] = drupal_render($form[$key]['name']);
+    $row[] = drupal_render($form[$key]['description']);
+    $row[] = drupal_render($form[$key]['urls']);
+    $rows[] = $row;
+  }
+  return theme('table', $header, $rows) . drupal_render($form);
+}
+
+/**
+ * Implementation of hook_validate().
+ */
+function station_schedule_validate(&$node) {
+  foreach ($node->settings['streams'] as $key => $stream) {
+    // Must have both a name and URL.
+    if (empty($stream['name']) xor empty($stream['urls'])) {
+      if (empty($stream['name'])) {
+        form_set_error("settings][streams][$key][name", t('You must provide a name for the webstream.'));
+      }
+      else {
+        form_set_error("settings][streams][$key][urls", t('You must provide a URL for the webstream.'));
+      }
+    }
+
+    $urls = is_array($stream['urls']) ? $stream['urls'] : explode("\n", $stream['urls']);
+    foreach ($urls as $url) {
+      $url = trim($url);
+      if (!empty($url) && !valid_url($url, TRUE)) {
+        form_set_error("settings][streams][$key][urls", t('An invalid webstream URL was provided: %url', array('%url' => $url)));
+      }
+    }
+  }
+}
+
+/**
+ * Implementation of hook_submit().
+ */
+function station_schedule_form_submit($form, &$form_state) {
+  $streams = array();
+  foreach ((array) $form_state['values']['settings']['streams'] as $key => $stream) {
+    // Skip empty rows.
+    if (!empty($stream['name'])) {
+      if (!is_array($stream['urls'])) {
+        // Convert URLs into an array and remove adjacent white space.
+        $stream['urls'] = array_map('trim', explode("\n", $stream['urls']));
+      }
+      // Create a new key that's the name with non-alphanumeric characters
+      // converted to underscores.
+      $new_key = preg_replace('/[^-\w]+/', '_', $stream['name']);
+      $streams[$new_key] = $stream;
+    }
+  }
+  $form_state['values']['settings']['streams'] = $streams;
+}
+
+/**
+ * Implementation of hook_load().
+ */
+function station_schedule_load($node) {
+  $schedule = array();
+  // Use station_day_name() for the day ordering in case Sunday isn't the
+  // first day of the week.
+  foreach (station_day_name() as $day => $name) {
+    $schedule[$day] = array();
+
+    $start = $day * MINUTES_IN_DAY;
+    $finish = $start + MINUTES_IN_DAY;
+    $result = db_query('SELECT * FROM {station_schedule_item} i WHERE i.schedule_nid = %d AND i.finish > %d AND i.start < %d ORDER BY i.start', $node->nid, $start, $finish);
+    while ($s = db_fetch_object($result)) {
+      // If a show spans a day, limit its start and finish times to be with-in
+      // the day.
+      if ($s->start < $start) {
+        $s->start = $start;
+      }
+      if ($s->finish > $finish) {
+        $s->finish = $finish;
+      }
+      $schedule[$day][] = $s;
+    }
+  }
+
+  // Load the settings.
+  $settings = db_fetch_array(db_query('SELECT increment, streams, unscheduled_message FROM {station_schedule} WHERE nid = %d', $node->nid));
+  if (isset($settings['streams']) && $streams = unserialize($settings['streams'])) {
+    $settings['streams'] = array();
+    foreach ($streams as $key => $stream) {
+      // Add in the M3U URL.
+      $stream['m3u_url'] = file_create_url('station/'. $node->nid .'-'. $key .'.m3u');
+      $settings['streams'][$key] = $stream;
+    }
+  }
+  else {
+    $settings['streams'] = array();
+  }
+
+  return array(
+    'settings' => $settings,
+    'schedule' => $schedule,
+  );
+}
+
+/**
+ * Implementation of hook_insert().
+ */
+function station_schedule_insert($node) {
+  $record = array_merge($node->settings, array('nid' => $node->nid, 'vid' => $node->vid));
+  drupal_write_record('station_schedule', $record);
+
+  station_schedule_write_m3u($node);
+}
+
+/**
+ * Implementation of hook_delete().
+ */
+function station_schedule_delete($node) {
+  // Remove any old streams files for this node.
+  file_scan_directory(file_create_path('station'), $node->nid .'-.*\.m3u', array('.', '..', 'CVS'), 'file_delete', FALSE);
+
+  db_query("DELETE FROM {station_schedule_item} WHERE schedule_nid = %d", $node->nid);
+  db_query("DELETE FROM {station_schedule} WHERE nid = %d", $node->nid);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+function station_schedule_update($node) {
+  db_query("DELETE FROM {station_schedule} WHERE nid = %d", $node->nid);
+  $record = array_merge($node->settings, array('nid' => $node->nid, 'vid' => $node->vid));
+  drupal_write_record('station_schedule', $record);
+
+  station_schedule_write_m3u($node);
+}
+
+/**
+ * Implementation of hook_link().
+ *
+ * This is implemented so that an edit link is displayed for users who have
+ * the rights to edit a node.
+ */
+function station_schedule_link($type, $node = NULL, $teaser = FALSE) {
+  if ($type == 'node') {
+    switch ($node->type) {
+    case 'station_program':
+      return station_schedule_archive_links($node->nid);
+    case 'station_playlist':
+      if (!$teaser && !empty($node->field_station_program[0]['nid'])) {
+        return station_schedule_archive_links(!empty($node->field_station_program[0]['nid']));
+      }
+    }
+  }
+  return array();
+}
+
+/**
+ * Load listen links for a program.
+ * @param $program_nid Node id of the program.
+ * @param $short bool true for short version of links
+ */
+function station_schedule_archive_links($program_nid, $short = FALSE) {
+  $archive_url = station_get_archive_url();
+  $may_archive = db_result(db_query('SELECT COUNT(*) FROM {station_schedule_item} s WHERE s.program_nid = %d AND s.may_archive = 1', $program_nid));
+
+  if ($archive_url && $may_archive ) {
+    $listen_url = $archive_url . $program_nid;
+    $rss_url = $archive_url . $program_nid .'/feed';
+
+    $listen_img = drupal_get_path('module', 'station_schedule') .'/images/listen_tiny.gif';
+    $rss_img = drupal_get_path('module', 'station_schedule') .'/images/rss_tiny.gif';
+
+    return array(
+      'station_archive_listen' => array(
+        'href' => $listen_url,
+        'title' => theme('image', $listen_img, t('Listen')) . (($short) ? '' : ' '. t('Listen to previous')),
+        'attributes' => array('title' => t('Listen to previous broadcasts of this show')),
+        'html' => TRUE,
+      ),
+      'station_archive_rss' => array(
+        'href' => $rss_url,
+        'title' => theme('image', $rss_img, t('Podcast'))  . (($short) ? '' : ' '. t('Subscribe to podcast')),
+        'attributes' => array('title' => t('Grab this show with your podcast software')),
+        'html' => TRUE,
+      ),
+    );
+  }
+  return array();
+}
+
+/**
+ * Implements hook_user() to associate programs with the users.
+ */
+function station_schedule_user($op, &$edit, &$account, $category = NULL) {
+  switch ($op) {
+    case 'load':
+      $field = content_fields('field_station_program_dj', 'station_program');
+      $db_info = content_database_info($field);
+      $result = db_query(db_rewrite_sql("SELECT n.nid, n.title FROM {node} n INNER JOIN {". $db_info['table'] ."} f ON n.vid = f.vid WHERE f.". $db_info['columns']['uid']['column'] ."=". $account->uid ." AND n.status = 1"));
+      $account->programs = array();
+      while ($program = db_fetch_object($result)) {
+        $account->programs[$program->nid] = $program->title;
+      }
+      break;
+
+  case 'view':
+    if (count($account->programs)) {
+      $account->content['station'] = array(
+        '#type' => 'user_profile_category',
+        '#attributes' => array('class' => 'user-member'),
+        '#title' => t('Programs'),
+        '#weight' => 10,
+      );
+      foreach ((array) $account->programs as $nid => $title) {
+        $node = node_load($nid);
+        $node = node_build_content($node, TRUE, FALSE);
+        $account->content['station'][] = array(
+          '#type' => 'user_profile_item',
+          '#attributes' => array('class' => 'user-member'),
+          '#title' => l($title, 'node/'. $nid),
+          '#value' => $node->field_station_program_genre[0]['safe'] . $node->content['station_schedule_times']['#value'],
+        );
+      }
+    }
+    break;
+
+  case 'delete':
+    $field = content_fields('field_station_program_dj', 'station_program');
+    $db_info = content_database_info($field);
+    db_query("DELETE FROM {". $db_info['table'] ."} WHERE ". $db_info['columns']['uid']['column'] ."=". $account->uid);
+    foreach ((array) $account->programs as $nid => $title) {
+      _station_send_notice('dj', 'remove', array('program_nid' => $nid, 'uid' => $account->uid));
+    }
+    break;
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function station_schedule_nodeapi(&$node, $op, $teaser, $page) {
+  if ($node->type == 'station_program') {
+    switch ($op) {
+//      case 'insert':
+//        // dj additions
+//        foreach ($node->djs as $uid => $username) {
+//          db_query('INSERT INTO {station_dj} (uid, program_nid) VALUES (%d, %d)', $uid, $node->nid);
+//          _station_send_notice('dj', 'add', array('program_nid' => $node->nid, 'uid' => $uid));
+//        }
+//        break;
+
+//      case 'update':
+//        // only schedule admins should be able to add or remove djs
+//        if (user_access('administer schedule')) {
+//          $current_djs = _station_schedule_program_load_djs($node->nid);
+//
+//          // dj removals
+//          $removals = array_diff_assoc($current_djs, $node->djs);
+//          foreach ($removals as $uid => $username) {
+//            db_query('DELETE FROM {station_dj} WHERE uid = %d AND program_nid = %d', $uid, $node->nid);
+//            _station_send_notice('dj', 'remove', array('program_nid' => $node->nid, 'uid' => $uid));
+//          }
+//
+//          // dj additions
+//          $additions = array_diff_assoc($node->djs, $current_djs);
+//          foreach ($additions as $uid => $username) {
+//            db_query('INSERT INTO {station_dj} (uid, program_nid) VALUES (%d, %d)', $uid, $node->nid);
+//            _station_send_notice('dj', 'add', array('program_nid' => $node->nid, 'uid' => $uid));
+//          }
+//        }
+//        break;
+
+      case 'delete':
+        // Remove the schedule item.
+        db_query('DELETE FROM {station_schedule_item} WHERE program_nid = %d', $node->nid);
+        break;
+
+      case 'load':
+        $node->times = array();
+        // Load the schedule items in order of start time while taking into
+        // account Drupal's first day of the week setting.
+        $result = db_query('SELECT * FROM {station_schedule_item} s WHERE s.program_nid = %d ORDER BY s.schedule_nid, ((s.start + %d) %% %d)', $node->nid, MINUTES_IN_DAY * (7 - variable_get('date_first_day', 0)), MINUTES_IN_WEEK);
+        while ($item = db_fetch_array($result)) {
+          $node->times[$item['schedule_nid']][] = $item;
+        }
+
+        break;
+
+      case 'view':
+        if ($page) {
+          $breadcrumb = drupal_get_breadcrumb();
+          $breadcrumb[] = l(t('Station'), 'station');
+          $breadcrumb[] = l(t('Programs'), 'station/programs');
+          drupal_set_breadcrumb($breadcrumb);
+        }
+
+        $djs = station_schedule_program_get_themed_djs($node);
+        $schedules = station_get_schedules();
+        $times_by_schedule = station_schedule_program_get_themed_times($node);
+
+        if ($teaser) {
+          $scheduled = array();
+          foreach ($times_by_schedule as $schedule_nid => $times) {
+            $scheduled[] = t('@title @times', array('@title' => $schedules[$schedule_nid]['title'], '@times' => station_anded_list($times)));
+          }
+          $node->content['station_schedule_times'] = array(
+            '#value' => count($scheduled) ? t(' on @scheduling.', array('@scheduling' => station_anded_list($scheduled))) : t(' is not currently scheduled.'),
+            '#weight' => 0,
+          );
+        }
+        else {
+          $node->content['station_schedule_times']['#weight'] = -4;
+          foreach ($times_by_schedule as $schedule_nid => $times) {
+            $node->content['station_schedule_times'][$schedule_nid] = array(
+              '#type' => 'item',
+              '#title' => t('Listen on <a href="!link">@title</a> at', array('@title' => $schedules[$schedule_nid]['title'], '!link' => url('node/'. $schedule_nid))),
+              '#value' => $times ? theme('item_list', $times) : t('This program is currently unscheduled.'),
+            );
+          }
+        }
+        break;
+    }
+  }
+}
+
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function station_schedule_form_alter(&$form, $form_state, $form_id) {
+  // We only alter station_program node edit forms
+  if ($form_id == 'station_program_node_form') {
+    $node = $form['#node'];
+// @TODO: figure out how to handle the permissions here.
+    if (user_access('administer station schedule')) {
+
+      $form['schedule'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Station Schedule'),
+        '#weight' => 1,
+        '#tree' => TRUE,
+        '#description' => t('The program must be saved before it can be added to the schedule.'),
+        '#collapsible' => TRUE,
+      );
+
+      // if it's a saved display the scheduled times.
+      if (!empty($node->nid)) {
+        $schedules = station_get_schedules();
+
+        $form['schedule']['#description'] = count($schedules) ? '' : t("There are no schedules on this site.");
+
+        foreach ($schedules as $schedule_nid => $schedule) {
+          $links = array();
+          $form['schedule'][$schedule_nid] = array(
+            '#type' => 'fieldset',
+            '#title' => $schedule['title'],
+            '#description' => t("These are the times this program is currently scheduled:"),
+          );
+          if (!isset($node->times[$schedule_nid])) {
+            $form['schedule'][$schedule_nid]['#description'] = t('This program is not on this schedule.');
+          }
+          else {
+            foreach ($node->times[$schedule_nid] as $time) {
+              $links[] = l(theme('station_dayhour_range', $time['start'], $time['finish']), "node/{$schedule_nid}/schedule/{$time['iid']}/edit", array('query' => array('destination' => "node/{$node->nid}/edit")));
+            }
+          }
+          // Don't encourage adding unpublished stuff to the schedule.
+          if ($node->status != 0) {
+            $links[] = l(t('Add this program to the @name schedule', array('@name' => $schedule['title'])), "node/{$schedule_nid}/schedule/add/{$node->nid}", array('query' => array('destination' => "node/{$node->nid}/edit")));
+          }
+          $form['schedule'][$schedule_nid]['links'] = array(
+            '#type' => 'item',
+            '#value' => theme('item_list', $links),
+          );
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Returns an array of themed DJs.
+ */
+function station_schedule_program_get_themed_djs($program_node) {
+  // make djs into links
+  $djs = array();
+  if (!empty($program_node->field_station_program_dj)) {
+    foreach ($program_node->field_station_program_dj as $entry) {
+      $user = user_load($entry);
+      $djs[] = theme('username', $user);
+    }
+  }
+  return $djs;
+}
+
+/**
+ * Returns a themed array of the times a program is scheduled.
+ */
+function station_schedule_program_get_themed_times($program_node) {
+  $ret = array();
+  if (!empty($program_node->times)) {
+    foreach ($program_node->times as $schedule_nid => $times) {
+      foreach ($times as $time) {
+        $ret[$schedule_nid][] = theme('station_dayhour_range', $time['start'], $time['finish']);
+      }
+    }
+  }
+  return $ret;
+}
+
+/**
+ * Implementation of hook_xmlrpc().
+ */
+function station_schedule_xmlrpc() {
+  return array(
+    array(
+      'station.program.get.at',
+      'station_schedule_program_get_at',
+      array('array', 'int', 'int'),
+      t('Fetch info on the program playing at a day/hour of a given timestamp.')
+    ),
+    array(
+      'station.schedule.get.list',
+      'station_schedule_get_list',
+      array('array'),
+      t('Fetch a list of schedules on this site.')
+    ),
+    array(
+      'station.program.get.list',
+      'station_schedule_get_program_list',
+      array('array'),
+      t('Fetch a list of programs on this site.')
+    ),
+  );
+}
+
+/**
+ * Function to redirect old /schedule/* links and /station/schedule/*
+ * node/$default/*.
+ */
+function station_schedule_redirect_old($day = '', $hour = '') {
+  $nid = variable_get('station_schedule_default', 0);
+  $path = "node/$nid/view";
+  if ($day) {
+    $path .= "/$day";
+    if ($hour) {
+      $path .= "/$hour";
+    }
+  }
+  drupal_goto($path);
+}
+
+/**
+ * Return a list of schedules on this site.
+ *
+ * @return
+ *   Array of schedules.
+ */
+function station_schedule_get_list() {
+  global $base_url;
+
+  $schedules = array();
+  $result = db_query("SELECT n.nid, n.title, ss.increment, ss.streams, ss.unscheduled_message FROM {node} n INNER JOIN {station_schedule} ss ON n.nid = ss.nid WHERE n.type = 'station_schedule'");
+  while ($schedule = db_fetch_array($result)) {
+    $schedule['base_url'] = $base_url;
+    if (isset($schedule['streams']) && $streams = unserialize($schedule['streams'])) {
+      $schedule['streams'] = array();
+      foreach ($streams as $key => $stream) {
+        // Add in the M3U URL.
+        $stream['m3u_url'] = file_create_url('station/'. $schedule['nid'] .'-'. $key .'.m3u');
+        $schedule['streams'][$key] = $stream;
+      }
+    }
+    else {
+      $schedule['streams'] = array();
+    }
+    $schedules[$schedule['nid']] = $schedule;
+  }
+
+  return $schedules;
+}
+
+/**
+ * Return a list of schedules on this site.
+ *
+ * @return
+ *   Array of schedules.
+ */
+function station_schedule_get_program_list() {
+  static $schedules;
+
+  if (!isset($schedules)) {
+    $schedules = array();
+    $result = db_query("SELECT n.nid, n.title FROM {node} n WHERE n.type = 'station_program'");
+    while ($o = db_fetch_array($result)) {
+      $schedules[$o['nid']] = $o;
+    }
+  }
+
+  return $schedules;
+}
+/**
+ * Get the program playing at a certain time. If no time is provide, use the
+ * current time.
+ *
+ * @param $gmt_timestamp
+ *   a timestamp used to determine the day of the week an hour.
+ * @param $schedule_nid
+ *   Schedule node id.
+ * @return
+ *   program node object if one is scheduled, an empty object if nothing is
+ *   scheduled.
+ */
+function station_schedule_program_get_at($gmt_timestamp, $schedule_nid) {
+  // Load the schedule item based on the time.
+  $minute = station_minute_from_local_ts(station_local_ts($gmt_timestamp));
+
+  $schedule_item = db_fetch_object(db_query('SELECT * FROM {station_schedule_item} s WHERE s.schedule_nid = %d AND s.start <= %d AND s.finish > %d', $schedule_nid, $minute, $minute));
+
+  // If there's an associated program, load it
+  if (isset($schedule_item->program_nid)) {
+    if ($node = node_load($schedule_item->program_nid)) {
+      // set this so that if the show is scheduled for multiple times the caller
+      // can easily figure out which one.
+      $node->may_archive = $schedule_item->may_archive;
+      // put this in so they can use a pretty url
+      $node->node_url = url('node/'. $node->nid, array('absolute' => TRUE));
+      return $node;
+    }
+  }
+  return new stdClass();
+}
+
+/**
+ * Load the schedule item by its id.
+ *
+ * This function also serves as a menu item loader.
+ *
+ * @param $iid schedule item id
+ * @return schedule item object
+ */
+function station_schedule_item_load($iid) {
+  $result = db_query('SELECT * FROM {station_schedule_item} i WHERE i.iid = %d', $iid);
+  if ($o = db_fetch_object($result)) {
+    return $o;
+  }
+  return FALSE;
+}
+
+/**
+ * Implementation of hook_view().
+ *
+ * Display a weekly view for the schedule.
+ */
+function station_schedule_view($node, $teaser = FALSE, $page = FALSE) {
+  drupal_add_css(drupal_get_path('module', 'station_schedule') .'/station_schedule.css');
+
+  if ($page) {
+    $breadcrumb = drupal_get_breadcrumb();
+    $breadcrumb[] = l(t('Station'), 'station');
+    $breadcrumb[] = l(t('Schedules'), 'station/schedules');
+    drupal_set_breadcrumb($breadcrumb);
+  }
+
+  $node = node_prepare($node, $teaser);
+  if ($teaser) {
+    $node->content['streams'] = array(
+      '#title' => t('Webstreams'),
+      '#value' => theme('station_streams', $node->settings['streams']),
+      '#weight' => -5,
+    );
+  }
+  else {
+    $node->content['weekly_schedule'] = array(
+      '#value' => station_schedule_week_page($node),
+      '#weight' => 1,
+    );
+  }
+  return $node;
+}
+
+
+// TODO CONVERT THIS INTO A PREPROCESS FUNCTION WITH A THEME
+/**
+ * Print a weekly schedule page.
+ */
+function station_schedule_week_page($node) {
+  $header[0] = array('data' => t('Time'));
+  $row = array();
+
+  // First column is hours.
+  $row[0] = array('id' => 'station-sch-hours', 'data' => '');
+  for ($hour = 0; $hour < 24; $hour++) {
+    $row[0]['data'] .= theme('station_schedule_hour', $hour);
+  }
+
+  // Then a column for each day of the week.
+  foreach ((array) $node->schedule as $day => $items) {
+    $header[$day + 1]['data'] = station_day_name($day);
+    $row[$day + 1]['data'] = '';
+
+    // The last finish pointer starts at the beginning of the day.
+    $last_finish = $day * MINUTES_IN_DAY;
+    $day_finish = ($day + 1) * MINUTES_IN_DAY;
+    foreach ($items as $item) {
+      // Display blocks for unscheduled time periods
+      if ($last_finish != $item->start) {
+        $row[$day + 1]['data'] .= theme('station_schedule_spacer', $last_finish, $item->start);
+      }
+      $last_finish = $item->finish;
+
+      // Display the schedule item.
+      $program = node_load($item->program_nid);
+      $row[$day + 1]['data'] .= theme('station_schedule_item', $item->start, $item->finish, $program);
+    }
+    // Display a block for any remaining time during the day.
+    if ($last_finish < $day_finish) {
+      $row[$day + 1]['data'] .= theme('station_schedule_spacer', $last_finish, $day_finish);
+    }
+  }
+
+  // Add a class to indicate what day it is.
+  $today = station_today();
+  $header[$today + 1]['class'] = 'station-sch-now-day';
+  $row[$today + 1]['class'] = 'station-sch-now-day';
+
+  return theme('table', $header, array($row), array('id' => 'station-sch'));
+}
+
+/**
+ * Write an M3U file to the files/station directory for each of the node's
+ * webstrem links.
+ *
+ * @param $node A station_schedule node.
+ */
+function station_schedule_write_m3u($node) {
+  // Create the files/station subdirectory.
+  $station_path = file_create_path('station');
+  file_check_directory($station_path, FILE_CREATE_DIRECTORY);
+
+  // Remove any old streams files for this node.
+  file_scan_directory($station_path, $node->nid .'-.*\.m3u', array('.', '..', 'CVS'), 'file_delete', FALSE);
+
+  // Write out new files.
+  foreach ($node->settings['streams'] as $key => $stream) {
+    $content = implode("\n", $stream['urls']);
+    file_save_data($content, "{$station_path}/{$node->nid}-{$key}.m3u",  FILE_EXISTS_REPLACE);
+  }
+}
+
+/**
+ * Implementation of hook_file_download().
+ */
+function station_schedule_file_download($filepath) {
+  if (preg_match('|^station/.*\.m3u$|', $filepath)) {
+    return array('Content-type: audio/x-mpegurl');
+  }
+  return NULL;
+}
+
+
+
+
+function expand_station_schedule_daytime_range($element) {
+  if (is_array($element['#value'])) {
+    $value = $element['#value'];
+  }
+  $element['start'] = array(
+    '#type' => 'station_schedule_daytime',
+    '#title' => t('Starts'),
+    '#increment' => $element['#increment'],
+    '#roll_midnight_back' => FALSE,
+    '#default_value' => $value['start'],
+  );
+  $element['finish'] = array(
+    '#type' => 'station_schedule_daytime',
+    '#title' => t('Ends'),
+    '#increment' => $element['#increment'],
+    '#roll_midnight_back' => TRUE,
+    '#default_value' => $value['finish'],
+  );
+  $element['#tree'] = TRUE;
+  $element['#element_validate'] = array('station_schedule_daytime_range_validate');
+
+  return $element;
+}
+
+function form_type_station_schedule_daytime_range_value(&$form) {
+  if (isset($form['#default_value'])) {
+    $form['#value'] = $form['#default_value'];
+  }
+  else {
+    $form['#value'] = array('start' => 0, 'finish' => 0);
+  }
+}
+
+function station_schedule_daytime_range_validate($form, &$form_state) {
+  $start = ($form['start']['#value']['day'] * MINUTES_IN_DAY) + $form['start']['#value']['minute'];
+  $finish = ($form['finish']['#value']['day'] * MINUTES_IN_DAY) + $form['finish']['#value']['minute'];
+
+  form_set_value($form, array('start' => $start, 'finish' => $finish), $form_state);
+
+  if ($start >= $finish) {
+    form_error($form['finish'], t("The end time must be after the start time."));
+  }
+  return $form;
+}
+
+
+
+
+function theme_station_schedule_daytime_range($element) {
+  return theme('form_element', $element, $element['#children'] );
+}
+
+function expand_station_schedule_daytime($element, $edit, &$form_state) {
+  $value = array('day' => 0, 'minute' => 0);
+  if (!empty($element['#value'])) {
+    if (is_array($element['#value'])) {
+      $value = $element['#value'];
+    }
+    else {
+      $value = array(
+       'day' => station_day_from_minute($element['#value']),
+       'minute' => $element['#value'] % MINUTES_IN_DAY,
+    );
+    }
+  }
+
+  // Make sure a range that ends on midnight of one day gets pushed back
+  // to the previous day.
+  if ($element['#roll_midnight_back'] && $value['minute'] == 0) {
+    $value['day']--;
+    $value['minute'] = MINUTES_IN_DAY;
+  }
+
+  // Make sure the increment will advance the counter.
+  $increment = $element['#increment'];
+  if (empty($increment) || $increment < 1) {
+    $increment = 1;
+  }
+
+  $minute_options = array();
+  for ($minute = 0; $minute <= 24 * 60; $minute += $increment) {
+    $time = station_time_from_minute($minute);
+    $minute_options[$minute] = $time['time'] . $time['a'];
+  }
+  $element['#tree'] = TRUE;
+  $element['#element_validate'] = array('station_schedule_daytime_validate');
+  $element['day'] = array(
+    '#type' => 'select',
+    '#default_value' => $value['day'],
+    '#options' => station_day_name(),
+  );
+  $element['minute'] = array(
+    '#type' => 'select',
+    '#default_value' => $value['minute'],
+    '#options' => $minute_options,
+  );
+
+  return $element;
+}
+
+function form_type_station_schedule_daytime_value($form, $edit = FALSE) {
+  if ($edit === FALSE) {
+    $form += array('#default_value' => 0);
+    return array(
+      'day' => station_day_from_minute($form['#default_value']),
+      'minute' => $form['#default_value'] % MINUTES_IN_DAY,
+    );
+  }
+}
+
+/**
+ * Validate the station_schedule_daytime element and store the value back into
+ * the root element.
+ */
+function station_schedule_daytime_validate($form, &$form_state) {
+  $time = ($form['#value']['day'] * MINUTES_IN_DAY) + $form['#value']['minute'];
+  // Since we don't want an array back we need to null out the children and
+  // store the computed value.
+  form_set_value($form['day'], NULL, $form_state);
+  form_set_value($form['minute'], NULL, $form_state);
+  form_set_value($form, $time, $form_state);
+
+  return $form;
+}
+
+function theme_station_schedule_daytime($element) {
+  return theme('form_element', $element, '<div class="container-inline">'. $element['#children'] .'</div>');
+}
+
+
+/**
+ * Implementation of hook_content_extra_fields().
+ *
+ * Let CCK know about the playlist stuff we're putting on nodes.
+ */
+function station_schedule_content_extra_fields($type_name) {
+  switch ($type_name) {
+    case 'station_program':
+      return array(
+        'schedule' => array(
+          'label' => t('Schedule'),
+          'description' => t('Station Program module form.'),
+          'weight' => -4,
+        ),
+      );
+  }
+}
+
+/**
+ * Implementation of hook_view_api().
+ */
+function station_schedule_views_api() {
+  return array(
+    'api' => 2.0,
+    'path' => drupal_get_path('module', 'station_schedule') . '/views',
+  );
+}

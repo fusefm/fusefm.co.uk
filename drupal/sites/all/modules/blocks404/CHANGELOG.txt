@@ -1,0 +1,11 @@
+// $Id: CHANGELOG.txt,v 1.4 2009/07/01 08:42:35 johnalbin Exp $
+
+404 Blocks 6.x-1.1, 2009-07-01
+------------------------------
+- #475416 by libeco: Dutch translation
+- #374982: Doesn't work with Acquia Marina
+- #465196 by quicksketch: Insert JS/CSS added by blocks
+
+404 Blocks 6.x-1.0, 2009-01-06
+------------------------------
+- Initial release.

@@ -1,0 +1,177 @@
+<?php
+// $Id: station_archive.install,v 1.15 2009/11/28 22:06:44 drewish Exp $
+
+/**
+ * Implementation of hook_schema().
+ */
+function station_archive_install() {
+  drupal_install_schema('station_archive');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function station_archive_uninstall() {
+  drupal_uninstall_schema('station_archive');
+
+  // Remove our taxonomy.
+  if ($vid = variable_get('station_archive_vid', '')) {
+    taxonomy_del_vocabulary($vid);
+  }
+
+  // Remove our variables.
+  $variables = array(
+    'station_archive_cleanup_old',
+    'station_archive_delete_unscheduled',
+    'station_archive_import_new',
+    'station_archive_import_dir',
+    'station_archive_max_age',
+    'station_archive_promote_scheduled',
+    'station_archive_title_format',
+    'station_archive_unscheduled_title',
+    'station_archive_vid',
+  );
+  foreach ($variables as $variable) {
+    variable_del($variable);
+  }
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function station_archive_schema() {
+  $schema['station_archive_item'] = array(
+    'description' => t('Information on an archive audio node.'),
+    'fields' => array(
+      'audio_nid' => array(
+        'description' => t("The audio {node}.nid."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'program_nid' => array(
+        'description' => t("The program {node}.nid."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'aired' => array(
+        'description' => 'The Unix timestamp when the audio aired.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'imported' => array(
+        'description' => 'The Unix timestamp when the audio was imported.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'permanent' => array(
+        'description' => t("Is this part of the permanent archive? If so it will not be deleted."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'size' => 'tiny',
+        'default' => 0,
+      ),
+    ),
+    'indexes' => array(
+      'station_archive_cleanup' => array('permanent', 'imported'),
+    ),
+    'primary key' => array('audio_nid', 'program_nid'),
+  );
+
+  $schema['station_archive_program'] = array(
+    'description' => t("Duplication of the program node title incase they're on another site."),
+    'fields' => array(
+      'program_nid' => array(
+        'description' => t("The program {node}.nid."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'title' => array(
+        'description' => 'The title of this node, always treated as non-markup plain text.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('program_nid'),
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_update_last_removed().
+ */
+function station_archive_update_last_removed() {
+  // We've removed the 5.x-1.x version of mymodule, including database updates.
+  // The next update function is mymodule_update_5200().
+  return 100;
+}
+
+/**
+ * Correct the station archive's {vocabulary}.module value.
+ */
+function station_archive_update_5200() {
+  $ret = array();
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      $ret[] = update_sql("UPDATE {vocabulary} SET module = 'station_archive' WHERE module = 'stationarchive'");
+      break;
+  }
+  return $ret;
+}
+
+/**
+ * Add rename {station_archive} to {station_archive_item} and add a .aired
+ * column to record the node's original air date. Use the node's creation date
+ * as a default value.
+ */
+function station_archive_update_5201() {
+  $ret = array();
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      $ret[] = update_sql("ALTER TABLE {station_archive} RENAME TO {station_archive_item}");
+      $ret[] = update_sql("ALTER TABLE {station_archive_item} ADD COLUMN `aired` INTEGER UNSIGNED NOT NULL DEFAULT 0 AFTER `program_nid`");
+      $ret[] = update_sql("UPDATE {station_archive_item} sai INNER JOIN {node} n ON sai.audio_nid = n.nid SET sai.aired = n.created WHERE n.type = 'audio'");
+      break;
+  }
+  return $ret;
+}
+
+/**
+ * Clean up a couple of things on the schema.
+ */
+function station_archive_update_6000() {
+  $ret = array();
+
+  $spec = array(
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'size' => 'tiny',
+    'default' => 0,
+  );
+  db_change_field($ret, 'station_archive_item', 'permanent', 'permanent', $spec);
+
+  $spec = array(
+    'type' => 'varchar',
+    'length' => 255,
+    'not null' => TRUE,
+    'default' => '',
+  );
+  db_change_field($ret, 'station_archive_program', 'title', 'title', $spec);
+
+  return $ret;
+}

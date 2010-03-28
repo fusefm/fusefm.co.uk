@@ -1,0 +1,159 @@
+<?php
+// $Id: station_program.module,v 1.22 2010/01/12 07:22:37 drewish Exp $
+
+/**
+ * Implementation of hook_help().
+ */
+function station_program_help($path, $arg) {
+  switch ($path) {
+    case 'admin/settings/station/program':
+      return t("These settings allow you to configure the station's program node.");
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function station_program_menu() {
+  $items['station/autocomplete/program'] = array(
+    'title' => 'program autocomplete',
+    'page callback' => 'station_program_autocomplete',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_node_info().
+ */
+function station_program_node_info() {
+  return array(
+    'station_program' => array(
+      'name' => t('Program'),
+      'module' => 'station_program',
+      'description' => t('A radio program that you can schedule.'),
+      'has_title' => TRUE,
+      'title_label' => t('Title'),
+      'has_body' => TRUE,
+      'body_label' => t('Description'),
+    )
+  );
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function station_program_perm() {
+  return array(
+    'administer station programs',
+    'view station program content',
+    'create station program content',
+    'edit any station program content',
+    'edit own station program content',
+    'delete any station program content',
+  );
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function station_program_access($op, $node, $account) {
+  if (user_access('administer station programs', $account)) {
+    return TRUE;
+  }
+
+  switch ($op) {
+    case 'view':
+      return user_access('view station program content', $account);
+
+    case 'create':
+      return user_access('create station program content', $account);
+
+    case 'update':
+      if (user_access('edit any station program content', $account)) {
+        return TRUE;
+      }
+
+      // The node owner can edit the program.
+      if (user_access('edit own station program content', $account)) {
+        if ($node->uid == $account->uid) {
+          return TRUE;
+        }
+
+        // If the schedule is enabled, let DJs edit the program.
+        if (module_exists('station_schedule')) {
+          if (!empty($node->field_station_program_dj)) {
+            foreach ($node->field_station_program_dj as $delta => $user) {
+              if ($user['uid'] == $account->uid) {
+                return TRUE;
+              }
+            }
+          }
+        }
+      }
+      return FALSE;
+
+    case 'delete':
+      return user_access('delete any station program content', $account);
+  }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+function station_program_form(&$node) {
+  $type = node_get_types('type', $node);
+
+  $form['title'] = array(
+    '#type' => 'textfield',
+    '#title' => check_plain($type->title_label),
+    '#default_value' => $node->title,
+    '#required' =>  TRUE,
+    '#maxlength' =>  128,
+    '#description' => t('The name of the program. You should avoid making major changes to this without telling the programming director.'),
+  );
+//  $form['genre'] = array(
+//    '#type' => 'textfield',
+//    '#title' => t('Text genre'),
+//    '#description' => t('A free-form description of the musical genres played on the program.'),
+//    '#default_value' => $node->genre,
+//    '#required' =>  true,
+//    '#maxlength' => 200,
+//    '#weight' => -2,
+//  );
+//  $form['url'] = array(
+//    '#type' => 'textfield',
+//    '#title' => t('Homepage URL'),
+//    '#description' => t("Link to the program's website."),
+//    '#default_value' => $node->url,
+//    '#maxlength' =>  255,
+//    '#weight' => -1,
+//  );
+  if ($type->has_body) {
+    $form['body_filter']['body'] = array(
+      '#type' => 'textarea',
+      '#title' => check_plain($type->body_label),
+      '#default_value' => $node->body,
+      '#rows' => 10,
+      '#required' => ($type->min_word_count > 0),
+      '#description' => t("Free form description of the show."),
+    );
+    $form['body_filter']['format'] = filter_form($node->format);
+  }
+
+  return $form;
+}
+
+/**
+ * Retrieve a pipe delimited string of autocomplete suggestions for existing programs
+ */
+function station_program_autocomplete($string = '') {
+  $matches = array();
+  $result = db_query_range("SELECT DISTINCT title FROM {node} WHERE type = 'station_program' AND LOWER(title) LIKE LOWER('%s%%') AND status = 1 ORDER BY title", $string, 0, 10);
+  while ($program = db_fetch_object($result)) {
+    $matches[$program->title] = check_plain($program->title);
+  }
+  print drupal_to_js($matches);
+  exit();
+}

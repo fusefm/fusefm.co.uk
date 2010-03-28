@@ -1,0 +1,16 @@
+; $Id: ldapprov_invite_signup.info,v 1.1 2009/01/30 18:50:10 miglius Exp $
+name = Provisioning signup invites
+description = Implements signup invites for LDAP users provisioning.
+package = LDAP integration
+dependencies[] = ldapprov_invite
+dependencies[] = signup_status_invite
+core = 6.x
+php = 5.2
+
+
+; Information added by drupal.org packaging script on 2009-08-12
+version = "6.x-1.0-beta1"
+core = "6.x"
+project = "ldap_provisioning"
+datestamp = "1250071855"
+

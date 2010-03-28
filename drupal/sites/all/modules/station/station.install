@@ -1,0 +1,93 @@
+<?php
+
+// $Id: station.install,v 1.15 2009/05/26 18:01:13 drewish Exp $
+
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function station_uninstall() {
+  variable_del('station_remote_archive_url');
+  variable_del('station_remote_schedule_url');
+}
+
+/**
+ * Implementation of hook_update_last_removed().
+ */
+function station_update_last_removed() {
+  // We've removed the 5.x-1.x version of mymodule, including database updates.
+  // The next update function is mymodule_update_5200().
+  return 100;
+}
+
+/**
+ * Rename the module's permissions to make them consistent with core.
+ */
+function station_update_6000() {
+  $ret = array();
+
+  $replacements = array(
+    // Archive
+    'administer archive' => array('administer station archive'),
+    // Catalog
+    'administer catalog' => array('administer station catalog'),
+    'view catalog' => array('view station album content'),
+    'create album content' => array('create station album content'),
+    'edit album content' => array('edit any station album content', 'delete any station album content'),
+    // Playlist
+    'create playlists' => array('create station playlist content'),
+    'edit own playlists' => array('edit own station playlist content', 'delete own station playlist content'),
+    // Program
+    'administer programs' => array('administer station programs'),
+    'edit program content' => array('edit any station program content'),
+    'edit own program content' => array('edit own station program content'),
+    // Schedule
+    'administer schedule' => array('administer station schedule'),
+  );
+
+  $result = db_query("SELECT rid, perm FROM {permission}");
+  while ($row = db_fetch_object($result)) {
+    $old_perms = explode(', ', $row->perm);
+    $new_perms = $old_perms;
+
+    // Rename the permission.
+    foreach ($replacements as $from => $to) {
+      $key = array_search($from, $old_perms);
+      if ($key !== FALSE) {
+        unset($new_perms[$key]);
+        $new_perms = array_merge($new_perms, $to);
+      }
+    }
+
+    // If they had 'access content' permissions before grant them the new
+    // view permissions.
+    if (in_array('access content', $old_perms)) {
+      $new_perms = array_merge($new_perms, array(
+        'view station playlist content',
+        'view station program content',
+        'view station schedule content',
+      ));
+    }
+
+    $new_perm = db_escape_string(implode(', ', array_unique($new_perms)));
+    $ret[] = update_sql("UPDATE {permission} SET perm = '". db_escape_string($new_perm) ."' WHERE rid = ". (int) $row->rid);
+  }
+
+  return $ret;
+}
+
+/**
+ * Remove the "Add multiple" options and suggest that using the Submit Again
+ * module instead.
+ */
+function station_update_6001() {
+  $ret = array();
+
+  if (variable_get('station_catalog_redirect_on_add', TRUE) || variable_get('station_program_redirect_on_add', TRUE)) {
+    $ret[] = array('success' => TRUE, 'query' => t("The Station module's add multiple feature has been removed. If you'd like to retain this functionality you should install the <a href='http://drupal.org/project/submitagain'>Submit Again</a> module."));
+  }
+  variable_del('station_catalog_redirect_on_add');
+  variable_del('station_program_redirect_on_add');
+
+  return $ret;
+}

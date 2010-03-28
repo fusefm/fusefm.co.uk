@@ -1,0 +1,318 @@
+<?php
+// $Id: ldapprov_samba.module,v 1.9 2009/07/28 14:08:25 miglius Exp $
+
+/**
+ * @file
+ * Adds LDAP Samba extensions upon creation of a new usere via LDAP provisioning
+ */
+
+//////////////////////////////////////////////////////////////////////////////
+
+define('LDAPPROV_SAMBA_ENABLED',       variable_get('ldapprov_samba_enabled', FALSE));
+define('LDAPPROV_SAMBA_ENTRY',         variable_get('ldapprov_samba_entry', "objectClass: organizationalPerson\nobjectClass: posixAccount\nobjectClass: shadowAccount\nobjectClass: sambaSamAccount\nuidNumber: !uid_number\ngidNumber: !gid_number\nhomeDirectory: /home/!name\nloginShell: /bin/bash\nsambaSID: !samba_sid\nsambaPrimaryGroupSID: !primary_group_id\nsambaPwdCanChange: !pwd_next_timestamp\nsambaPwdLastSet: !pwd_timestamp\nsambaAcctFlags: \nsambaLMPassword: !lm_pass\nsambaNTPAssword: !nt_pass"));
+define('LDAPPROV_SAMBA_DOMAIN_SID',    variable_get('ldapprov_samba_domain_sid', ''));
+define('LDAPPROV_SAMBA_DEFAULT_GROUP', variable_get('ldapprov_samba_default_group', 'samba'));
+define('LDAPPROV_SAMBA_GROUP_BASE_DN', variable_get('ldapprov_samba_group_base_dn', ''));
+define('LDAPPROV_SAMBA_PASS_EXPIRE',   variable_get('ldapprov_samba_pass_expire', '365'));
+
+define('LDAPPROV_SAMBA_OBJECTCLASS', 'sambaSamAccount');
+
+//////////////////////////////////////////////////////////////////////////////
+// Core API hooks
+
+/**
+ * Implementation of hook_init().
+ */
+function ldapprov_samba_init() {
+  // Initiates LDAP object.
+  if (LDAPPROV_ENABLED) {
+    include_once(drupal_get_path('module', 'ldapprov_samba') .'/lam/lib/createntlm.inc');
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function ldapprov_samba_menu() {
+  return array(
+    'admin/settings/ldap/ldapprov/samba' => array(
+      'title' => 'Samba',
+      'description' => 'Configure LDAP provisioning Samba settings.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('ldapprov_samba_admin_settings'),
+      'access arguments' => array('administer site configuration'),
+      'file' => 'ldapprov_samba.admin.inc',
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_user().
+ */
+function ldapprov_samba_user($op, &$edit, &$account, $category = NULL) {
+  if (LDAPPROV_ENABLED && LDAPPROV_SAMBA_ENABLED) {
+    switch ($op) {
+      case 'submit':
+        if (isset($account->ldap_authentified) && $category == 'account') {
+          _ldapprov_samba_user_submit($account, $edit);
+        }
+        break;
+      case 'delete':
+        if (isset($account->ldap_authentified)) {
+          global $_ldapprov_ldap;
+
+          if (!$_ldapprov_ldap->connect(LDAPPROV_DN, LDAPPROV_PASS)) {
+            watchdog('ldapprov_samba', 'User delete: user data could not be written in the LDAP directory. Could not bind as %dn.', array('%dn' => LDAPPROV_DN), WATCHDOG_ERROR);
+            return;
+          }
+
+          $group_base_dn = (LDAPPROV_SAMBA_GROUP_BASE_DN) ? LDAPPROV_SAMBA_GROUP_BASE_DN : $_ldapprov_ldap->getOption('basedn');
+          $name = _ldapprov_get_name_from_dn($account->ldap_dn);
+          $groups = $_ldapprov_ldap->search($group_base_dn, 'memberUid='. $name, array('cn'));
+          $_ldapprov_ldap->disconnect();
+
+          _ldapprov_samba_groups($account, $groups, 'delete');
+        }
+        break;
+    }
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// ldapprov hooks
+
+function ldapprov_samba_ldapuser(&$account) {
+  if (LDAPPROV_SAMBA_ENABLED) {
+    global $_ldapprov_ldap;
+
+    if (!$_ldapprov_ldap->connect(LDAPPROV_DN, LDAPPROV_PASS)) {
+      watchdog('ldapprov_samba', 'User create: user data could not be written in the LDAP directory. Could not bind as %dn.', array('%dn' => LDAPPROV_DN), WATCHDOG_ERROR);
+      return;
+    }
+
+    $samba_vars['!name'] = isset($account->new_name) ? $account->new_name : $account->name;
+
+    // Calculate nt and lm passwords for samba.
+    $hash = new smbHash();
+    $samba_vars['!lm_pass'] = $hash->lmhash($account->clear_pass);
+    $samba_vars['!nt_pass'] = $hash->nthash($account->clear_pass);
+
+    $group_base_dn = (LDAPPROV_SAMBA_GROUP_BASE_DN) ? LDAPPROV_SAMBA_GROUP_BASE_DN : $_ldapprov_ldap->getOption('basedn');
+
+    // Determine the default group id for the new user.
+    $ret = $_ldapprov_ldap->search($group_base_dn, 'cn='. LDAPPROV_SAMBA_DEFAULT_GROUP, array('gidNumber'));
+    $samba_vars['!gid_number'] = $ret[0]['gidnumber'][0];  // Note that field names returned are all lowercase.
+
+    // Select a uid number one greater than the highest one already in the database.
+    $ret = $_ldapprov_ldap->search($_ldapprov_ldap->getOption('basedn'), $_ldapprov_ldap->getOption('user_attr') .'=*', array('uidNumber'));
+    $uid_numbers = array();
+    if (is_array($ret)) {
+      foreach ($ret as $result) {
+        if ($result['uidnumber'][0] > 1000) {  // Throw out any that are under 1000.
+          array_push($uid_numbers, $result['uidnumber'][0]);
+        }
+      }
+      sort($uid_numbers);
+      $uid_number = array_pop($uid_numbers);
+    }
+
+    $samba_vars['!uid_number'] = ($uid_number) ? $uid_number++ : 1000;
+
+    // Calculate the SambaSID and SambaPrimaryGroupSID.
+    $samba_vars['!samba_sid'] = LDAPPROV_SAMBA_DOMAIN_SID ."-". $samba_vars['!uid_number'];
+    $calculated_uid = 2 * $samba_vars['!uid_number'] + 1000;
+    $samba_vars['!primary_group_id'] = LDAPPROV_SAMBA_DOMAIN_SID ."-". $calculated_uid;
+
+    $time = time();
+    $samba_vars['!pwd_timestamp'] = $time;
+    $samba_vars['!pwd_next_timestamp'] = $time + 60*60*24*LDAPPROV_SAMBA_PASS_EXPIRE;
+
+    foreach (explode("\n", LDAPPROV_SAMBA_ENTRY) as $line) {
+      $line = str_replace("\r", '', $line);
+      if (preg_match('/^\s*$/', $line) || preg_match('/^#.*$/', $line)) {
+        continue;
+      }
+      list($attr, $var) = explode(': ', $line);
+      $ldif[$attr][] = strtr($var, $samba_vars);
+    }
+
+    // Print ldif if debugging is enabled.
+    if (LDAPPROV_DEBUG) {
+      $ldif_out = '';
+      foreach ($ldif as $key => $val) {
+        foreach ($val as $k => $v) {
+          $ldif_out .= "$key: $v<br />";
+        }
+      }
+      drupal_set_message($ldif_out);
+    }
+
+    $oc = $_ldapprov_ldap->retrieveMultiAttribute($account->ldap_dn, 'objectClass');
+    $ldif['objectClass'] = array_merge($oc, $ldif['objectClass']);
+    $_ldapprov_ldap->writeAttributes($account->ldap_dn, $ldif);
+
+    $_ldapprov_ldap->disconnect();
+
+    // Add our user to the default samba group.
+    $group_base_dn = (LDAPPROV_SAMBA_GROUP_BASE_DN) ? LDAPPROV_SAMBA_GROUP_BASE_DN : $_ldapprov_ldap->getOption('basedn');
+    $groups[0]['dn'] = 'cn='. LDAPPROV_SAMBA_DEFAULT_GROUP .','. $group_base_dn;
+    $groups[0]['cn'][0] = LDAPPROV_SAMBA_DEFAULT_GROUP;
+    _ldapprov_samba_groups($account, $groups, 'add');
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Misc functions
+
+/*
+ * Checks if a user has Samba extensions
+ */
+function _ldapprov_samba_check(&$account) {
+  global $_ldapprov_ldap;
+
+  if (!$_ldapprov_ldap->connect(LDAPPROV_DN, LDAPPROV_PASS)) {
+    watchdog('ldapprov_samba', 'User view: user data could not be written in the LDAP directory. Could not bind as %dn.', array('%dn' => LDAPPROV_DN), WATCHDOG_ERROR);
+    return;
+  }
+
+  $oc = $_ldapprov_ldap->retrieveMultiAttribute($account->ldap_dn, 'objectClass');
+  $_ldapprov_ldap->disconnect();
+
+  return in_array(LDAPPROV_SAMBA_OBJECTCLASS, $oc);
+}
+
+/*
+ * LDAP groups actions
+ */
+function _ldapprov_samba_groups(&$account, $groups, $action) {
+  global $_ldapprov_ldap;
+
+  if (is_array($groups)) {
+    if (!$_ldapprov_ldap->connect(LDAPPROV_DN, LDAPPROV_PASS)) {
+      watchdog('ldapprov_samba', 'User edit: user data could not be written in the LDAP directory. Could not bind as %dn.', array('%dn' => LDAPPROV_DN), WATCHDOG_ERROR);
+      return;
+    }
+
+    $group_base_dn = (LDAPPROV_SAMBA_GROUP_BASE_DN) ? LDAPPROV_SAMBA_GROUP_BASE_DN : $_ldapprov_ldap->getOption('basedn');
+    $new_ldap_dn = ($account->new_ldap_dn) ? $account->new_ldap_dn : $account->ldap_dn;
+    $name = _ldapprov_get_name_from_dn($account->ldap_dn);
+    $new_name = _ldapprov_get_name_from_dn($new_ldap_dn);
+
+    unset($groups['count']);
+    foreach ($groups as $group) {
+      $member_uids = $_ldapprov_ldap->search($group_base_dn, 'cn='. $group['cn'][0], array('memberUid'));
+      unset($member_uids[0]['memberuid']['count']);
+      $new_uids = array();
+      if (is_array($member_uids[0]['memberuid'])) {
+        foreach ($member_uids[0]['memberuid'] as $uid) {
+          if ($uid != $name) {
+            array_push($new_uids, $uid);
+          }
+        }
+      }
+
+      switch ($action) {
+        case 'delete':
+          break;
+        case 'add':
+          if ($name != $new_name) {
+            array_push($new_uids, $new_name);
+          }
+          else {
+            array_push($new_uids, $name);
+          }
+          break;
+        case 'rename':
+          array_push($new_uids, $new_name);
+          break;
+      }
+
+      $_ldapprov_ldap->writeAttributes($group['dn'], array('memberUid' => $new_uids));
+    }
+  }
+}
+
+/*
+ * Saves Samba extensions
+ */
+function _ldapprov_samba_user_submit(&$account, &$edit) {
+  global $_ldapprov_ldap;
+
+  $samba_extensions = _ldapprov_samba_check($account);
+
+  if ($samba_extensions) {
+    if (!$_ldapprov_ldap->connect(LDAPPROV_DN, LDAPPROV_PASS)) {
+      watchdog('ldapprov_samba', 'User edit: user data could not be written in the LDAP directory. Could not bind as %dn.', array('%dn' => LDAPPROV_DN), WATCHDOG_ERROR);
+      return;
+    }
+
+    $samba_vars = array();
+    if (isset($edit['name']) && $account->name != $edit['name']) {
+      $samba_vars['!name'] = $edit['name'];
+    }
+
+    if (isset($edit['pass'])) {
+      // Calculate nt and lm passwords for samba.
+      $hash = new smbHash();
+      $samba_vars['!lm_pass'] = $hash->lmhash($edit['pass']);
+      $samba_vars['!nt_pass'] = $hash->nthash($edit['pass']);
+
+      $time = time();
+      $samba_vars['!pwd_timestamp'] = $time;
+      $samba_vars['!pwd_next_timestamp'] = $time + 60*60*24*LDAPPROV_SAMBA_PASS_EXPIRE;
+    }
+
+    if (!empty($samba_vars)) {
+      foreach (explode("\n", LDAPPROV_SAMBA_ENTRY) as $line) {
+        $line = str_replace("\r", '', $line);
+        if (preg_match('/^\s*$/', $line) || preg_match('/^#.*$/', $line)) {
+          continue;
+        }
+        list($attr, $var) = explode(': ', $line);
+        foreach ($samba_vars as $key => $samba_var) {
+          if (preg_match('/'. $key .'/', $var)) {
+            $ldif[$attr][] = strtr($var, $samba_vars);
+          }
+        }
+      }
+
+      if (is_array($ldif)) {
+        $_ldapprov_ldap->writeAttributes($account->ldap_dn, $ldif);
+      }
+    }
+
+    if (isset($edit['ldap_dn']) && $account->ldap_dn != $edit['ldap_dn']) {
+
+      // Renames users in the groups.
+      $group_base_dn = (LDAPPROV_SAMBA_GROUP_BASE_DN) ? LDAPPROV_SAMBA_GROUP_BASE_DN : $_ldapprov_ldap->getOption('basedn');
+      $name = _ldapprov_get_name_from_dn($account->ldap_dn);
+      $groups = $_ldapprov_ldap->search($group_base_dn, 'memberUid='. $name, array('cn'));
+
+      $_ldapprov_ldap->disconnect();
+
+      $account->new_ldap_dn = $edit['ldap_dn'];
+
+      _ldapprov_samba_groups($account, $groups, 'rename');
+    }
+    else {
+      $_ldapprov_ldap->disconnect();
+    }
+  }
+  else {
+
+    // Create samba extensions.
+    // The samba password will be saved only on drupal password change.
+    if (isset($edit['name']) && $account->name != $edit['name']) {
+      $account->new_name = $edit['name'];
+    }
+    if (isset($edit['pass'])) {
+      $account->clear_pass = $edit['pass'];
+    }
+    if (isset($edit['ldap_dn']) && $account->ldap_dn != $edit['ldap_dn']) {
+      $account->new_ldap_dn = $edit['ldap_dn'];
+    }
+
+    ldapprov_samba_ldapuser($account);
+  }
+}
+

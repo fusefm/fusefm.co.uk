@@ -1,0 +1,67 @@
+<?php
+// $Id: blocks404.module,v 1.4 2009/01/06 06:42:50 johnalbin Exp $
+
+define('BLOCKS404_PAGE', 'blocks404');
+
+/**
+ * Implements hook_init().
+ */
+function blocks404_init() {
+  // If site_404 is not set, all menu-related items disappear on 404.
+  $site_404 = variable_get('site_404', '');
+  if ($site_404 == '') {
+    variable_set('site_404', BLOCKS404_PAGE);
+  }
+  // drupal_not_found() sets $_GET['q'] to the site_404 variable, so make a copy.
+  define('BLOCKS404_ORIGINAL_QUERY', $_GET['q']);
+}
+
+/**
+ * Implements hook_menu().
+ */
+function blocks404_menu() {
+  $items[BLOCKS404_PAGE] = array(
+    'title'           => 'Page not found',
+    'access callback' => TRUE,
+    'page callback'   => 'blocks404_404_page',
+    'type'            => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Our custom menu callback that returns Drupal's standard 404 message.
+ */
+function blocks404_404_page() {
+  return t('The requested page could not be found.');
+}
+
+/**
+ * Renders the left and right regions and resets the body classes on 404 pages.
+ */
+function blocks404_preprocess_page(&$vars, $hook) {
+  if (strpos(drupal_get_headers(), 'HTTP/1.1 404 Not Found') !== FALSE) {
+    module_load_include('inc', 'blocks404', 'blocks404.active');
+    _blocks404_preprocess_page($vars);
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function blocks404_form_system_error_reporting_settings_alter(&$form, $form_state) {
+  // Since we don't care what site_404 is set to, let the user set it if they want.
+  if ($form['site_404']['#default_value'] == BLOCKS404_PAGE) {
+    $form['site_404']['#default_value'] = '';
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function blocks404_form_alter(&$form, $form_state, $form_id) {
+  if ($_GET['q'] == BLOCKS404_PAGE) {
+    module_load_include('inc', 'blocks404', 'blocks404.active');
+    _blocks404_form_alter($form, $form_state, $form_id);
+  }
+}
