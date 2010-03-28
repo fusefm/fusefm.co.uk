@@ -119,11 +119,13 @@ function blog_link($type, $node = NULL, $teaser = FALSE) {
 
   if ($type == 'node' && $node->type == 'blog') {
     if (arg(0) != 'blog' || arg(1) != $node->uid) {
+      $user = user_load(array('name' => $node->name));
+      $name = $user->profile_givenName . ' ' . $user->profile_sn;
       // This goes to l() and therefore escapes !username in both the title and attributes.
       $links['blog_usernames_blog'] = array(
-        'title' => t("!username's blog", array('!username' => $node->name)),
+        'title' => t("!username's blog", array('!username' => $name)),
         'href' => "blog/$node->uid",
-        'attributes' => array('title' => t("Read !username's latest blog entries.", array('!username' => $node->name)))
+        'attributes' => array('title' => t("Read !username's latest blog entries.", array('!username' => $name)))
       );
     }
   }

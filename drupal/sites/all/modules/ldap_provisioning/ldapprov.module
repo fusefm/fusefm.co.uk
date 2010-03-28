@@ -618,10 +618,10 @@ function _ldapprov_register_form($data = array(), $disabled = FALSE) {
   if (LDAPPROV_ALLOW_USERNAME) {
     $form['account']['name'] = array(
       '#type' => 'textfield',
-      '#title' => t('Username'),
-      '#description' => t('Your full name or your preferred username; only letters, numbers and spaces are allowed.'),
-      '#size' => 30,
-      '#maxlength' => 60,
+      '#title' => t('Student Number'),
+      '#description' => t('Your seven digit university ID number from your student card. Omit the non-bold last digit (normally 0).'),
+      '#size' => 7,
+      '#maxlength' => 7,
       '#default_value' => isset($data['name']) ? $data['name'] : NULL,
       '#required' => !$disabled ? TRUE : FALSE,
       '#disabled' => $disabled,
@@ -754,8 +754,11 @@ function _ldapprov_register_validate($values, $messages = TRUE) {
     if (preg_match('/\s+$/', $values['name'])) {
       $errors = ($messages) ? form_set_error('name', t('Username cannot end with a space.')) : $errors + 1;
     }
-    if (preg_match('/[^\w\s]+/', $values['name'])) {
-      $errors = ($messages) ? form_set_error('name', t('Username should contain only letters, numbers and spaces.')) : $errors + 1;
+	if (strlen($values['name']) != 7) {
+      $errors = ($messages) ? form_set_error('name', t('Username is not the correct length.')) : $errors + 1;
+    }
+    if (preg_match('/[^0-9]/', $values['name'])) {
+      $errors = ($messages) ? form_set_error('name', t('Username should contain only numbers.')) : $errors + 1;
     }
     $result = db_query("SELECT uid FROM {users} WHERE name = '%s'", $values['name']);
     if ($user = db_fetch_object($result)) {

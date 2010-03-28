@@ -6,7 +6,7 @@
  * Enables the user registration and login system.
  */
 
-define('USERNAME_MAX_LENGTH', 60);
+define('USERNAME_MAX_LENGTH', 7);
 define('EMAIL_MAX_LENGTH', 64);
 
 /**
@@ -395,6 +395,9 @@ function user_validate_name($name) {
                    $name)) {
     return t('The username contains an illegal character.');
   }
+  if (preg_match('/[^0-9]/', $values['name'])) {
+    $errors = ($messages) ? form_set_error('name', t('Username should contain only numbers.')) : $errors + 1;
+  }
   if (strpos($name, '@') !== FALSE && !eregi('@([0-9a-z](-?[0-9a-z])*.)+[a-z]{2}([zmuvtg]|fo|me)?$', $name)) return t('The username is not a valid authentication ID.');
   if (strlen($name) > USERNAME_MAX_LENGTH) return t('The username %name is too long: it must be %max characters or less.', array('%name' => $name, '%max' => USERNAME_MAX_LENGTH));
 }
@@ -650,9 +653,9 @@ function user_login_block() {
     '#submit' => array('user_login_submit'),
   );
   $form['name'] = array('#type' => 'textfield',
-    '#title' => t('Username'),
+    '#title' => t('Student Number'),
     '#maxlength' => USERNAME_MAX_LENGTH,
-    '#size' => 15,
+    '#size' => 7,
     '#required' => TRUE,
   );
   $form['pass'] = array('#type' => 'password',
@@ -1263,16 +1266,16 @@ function user_login(&$form_state) {
 
   // Display login form:
   $form['name'] = array('#type' => 'textfield',
-    '#title' => t('Username'),
-    '#size' => 60,
+    '#title' => t('Student ID'),
+    '#size' => 7,
     '#maxlength' => USERNAME_MAX_LENGTH,
     '#required' => TRUE,
   );
 
-  $form['name']['#description'] = t('Enter your @s username.', array('@s' => variable_get('site_name', 'Drupal')));
+  $form['name']['#description'] = t('Enter your university student ID.');
   $form['pass'] = array('#type' => 'password',
     '#title' => t('Password'),
-    '#description' => t('Enter the password that accompanies your username.'),
+    '#description' => t('Enter your password.'),
     '#required' => TRUE,
   );
   $form['#validate'] = user_login_default_validators();
@@ -1460,11 +1463,12 @@ function user_edit_form(&$form_state, $uid, $edit, $register = FALSE) {
   // Only show name field when: registration page; or user is editing own account and can change username; or an admin user.
   if ($register || ($GLOBALS['user']->uid == $uid && user_access('change own username')) || $admin) {
     $form['account']['name'] = array('#type' => 'textfield',
-      '#title' => t('Username'),
+      '#title' => t('Student Number'),
       '#default_value' => $edit['name'],
       '#maxlength' => USERNAME_MAX_LENGTH,
-      '#description' => t('Spaces are allowed; punctuation is not allowed except for periods, hyphens, and underscores.'),
+      '#description' => t('Your seven digit university ID number from your student card. Omit the non-bold last digit (normally 0).'),
       '#required' => TRUE,
+      '#size' => 7,
     );
   }
   $form['account']['mail'] = array('#type' => 'textfield',

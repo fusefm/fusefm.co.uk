@@ -38,7 +38,7 @@ function theme_station_schedule_item($start, $finish, $program) {
     $djs = array();
     foreach ($program->field_station_program_dj as $entry) {
       $user = user_load($entry);
-      $djs[] .= $user->name;
+      $djs[] .= $user->profile_givenName . ' ' . $user->profile_sn;
     }
     $output .= '<span class="station-sch-djs">'. check_plain(implode(', ', $djs)) .'</span>';
   }

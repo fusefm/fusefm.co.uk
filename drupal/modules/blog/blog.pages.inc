@@ -88,7 +88,7 @@ function blog_page_last() {
  */
 function blog_feed_user($account) {
   $result = db_query_range(db_rewrite_sql("SELECT n.nid, n.created FROM {node} n  WHERE n.type = 'blog' AND n.uid = %d AND n.status = 1 ORDER BY n.created DESC"), $account->uid, 0, variable_get('feed_default_items', 10));
-  $channel['title'] = t("!name's blog", array('!name' => $account->name));
+  $channel['title'] = t("!name's blog", array('!name' => $account->profile_givenName . ' ' . $account->profile_sn));
   $channel['link'] = url('blog/'. $account->uid, array('absolute' => TRUE));
 
   $items = array();
