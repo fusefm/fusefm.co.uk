@@ -1,0 +1,4 @@
+.DS_Store
+drupal/sites/default/files
+Capfile
+config/deploy.rb
