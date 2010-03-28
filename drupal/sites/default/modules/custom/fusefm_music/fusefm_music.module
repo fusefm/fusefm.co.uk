@@ -1,0 +1,143 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Provides artist info pages
+*/
+
+/**
+* Implementation of hook_menu().
+*/
+function fusefm_music_menu() {
+  $items['music/artist'] = array(
+    'title' => 'FusicBrainz Artist Lookup',
+    'page callback' => 'fusefm_music_generate_page',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+} // function fusefm_music_menu()
+
+function fusefm_music_generate_page($artist='', $track='', $mbid='') {
+  /*
+  generatepage.php
+  Fuse Playout System Web Content aka FusicBrainz
+  Attempts to make a page about an artist given particular parameters
+  */
+
+  // STILL NEED TO SOURCE GIGS AND NEWS FROM GIGULATE
+  // PLUS ALL TRACKS BY THE ARTIST IN THE FUSE COLLECTION
+
+  include('/mnt/webarray/pubwww/drupal/fusic/dbinfo.php');
+  include('/mnt/webarray/pubwww/drupal/fusic/content.php');
+
+  if (stristr($mbid,";") OR stristr($artist,";") OR stristr($track,";")) {
+    die("Hacking attempt");
+  }
+
+  if (($artist != "") OR ($mbid != "")) {
+
+    if ($mbid == "") {
+      // Do MusicBrainz query for artist mbid
+      require_once("/mnt/webarray/pubwww/drupal/fusic/phpbrainz/phpBrainz.class.php");
+      //Create new phpBrainz object
+      $phpBrainz = new phpBrainz();
+      $args = array(
+        "title"=>str_replace("&","and",htmlspecialchars(utf8_encode($track), ENT_COMPAT, 'UTF-8')),
+        "artist"=>str_replace("&","and",htmlspecialchars(utf8_encode($artist), ENT_COMPAT, 'UTF-8'))
+      );
+      $trackFilter = new phpBrainz_TrackFilter($args);
+      if ($trackFilter) {
+        $trackResults = $phpBrainz->findTrack($trackFilter);
+      }
+      if ($trackResults) {
+        $mbartistobj = $trackResults[0]->getArtist();
+        $mbid = $mbartistobj->getId();
+      }
+      if ($mbid == "") {
+        $track = "";
+        $phpBrainz = new phpBrainz();
+        $args = array(
+          "title"=>str_replace("&","and",htmlspecialchars(utf8_encode($track), ENT_COMPAT, 'UTF-8')),
+          "artist"=>str_replace("&","and",htmlspecialchars(utf8_encode($artist), ENT_COMPAT, 'UTF-8'))
+        );
+        $trackFilter = new phpBrainz_TrackFilter($args);
+        if ($trackFilter) {
+          $trackResults = $phpBrainz->findTrack($trackFilter);
+        }
+        if ($trackResults) {
+          $mbartistobj = $trackResults[0]->getArtist();
+          $mbid = $mbartistobj->getId();
+        }
+      }
+    }
+
+    // Print image and description
+    $descarray = getartistdescription($mbid);
+    drupal_set_title($descarray[0]);
+    if ($descarray[0] != "") {
+      $artist = $descarray[0];
+    }
+    $output .= "<img src=\"content.php?artistimage=true&mbid=$mbid\" width=\"475\" height=\"276\"><br />";
+    if ($descarray[1] != "") {
+      $output .= "<h2>Biography</h2>";
+      $output .= $descarray[1] . "<br />";
+    }
+
+    // Links section
+    $linkarray = getartistlinks($mbid);
+    if (($descarray[2] != "") OR ($descarray[2] != "") OR ($descarray[2] != "") OR ($descarray[2] != "")) {
+      $output .= "<h2>Links</h2>";
+      if ($linkarray[0] != "") {
+        $output .= "<b>Official Homepage:</b> <a href=\"" . $linkarray[0] . "\" target=\"_blank\">" . $linkarray[0] . "</a><br />";
+      }
+      if ($linkarray[1] != "") {
+        $output .= "<b>Fan Page:</b> <a href=\"" . $linkarray[1] . "\" target=\"_blank\">" . $linkarray[1] . "</a><br />";
+      }
+      if ($linkarray[2] != "") {
+        $output .= "<b>MySpace:</b> <a href=\"" . $linkarray[2] . "\" target=\"_blank\">" . $linkarray[2] . "</a><br />";
+      }
+      if ($descarray[2] != "") {
+        $output .= "<b>Wikipedia:</b> <a href=\"" . $descarray[2] . "\" target=\"_blank\">" . $descarray[2] . "</a><br />";
+      }
+    }
+
+    // Recently played tracks
+    $latesttracks = getlatesttracks($mbid,$artist);
+    if ($latesttracks[0][0] != "") {
+      $output .= "<h2>Recently Played</h2>";
+      for ($i=0;$i<sizeof($latesttracks);$i++) {
+        $output .= $latesttracks[$i][0] . " played by " . $latesttracks[$i][1] . " @ " . date("H:i (d/m/y)",$latesttracks[$i][2]) . "<br />";
+      }
+      $output .= "<br />View all of our recently played tracks <a href=\"/music\">here</a>";
+    }
+
+    // Most played on
+    $similarshows = getshowcomparison($mbid,$artist,"291");
+    if ($similarshows[0] != "") {
+      $output .= "<h2>Most Played On</h2>";
+      for ($i=0;$i<sizeof($similarshows);$i++) {
+        $output .= $similarshows[$i] . "<br />";
+      }
+      $output .= "<br />View all of our shows <a href=\"/shows\">here</a>";
+    }
+    
+    // Print tracks in the Fuse collection
+    $fusetracks = getfusetracks($mbid,$artist);
+    if ($fusetracks[0] != "") {
+      $output .= "<h2>Tracks In Our Collection</h2>";
+      for ($i=0;$i<sizeof($fusetracks);$i++) {
+        $output .= $fusetracks[$i] . "<br />";
+      }
+    }
+
+    $output .= "<h2>Data Sources</h2>";
+    $output .= "Data on this page is generated automatically by <a href=\"http://www.bbc.co.uk/music\" target=\"_blank\">BBC Music</a> and other connected sources including <a href=\"http://www.wikipedia.org\" target=\"_blank\">Wikipedia</a>, <a href=\"http://www.musicbrainz.org\" target=\"_blank\">MusicBrainz</a>, <a href=\"http://www.gigulate.com\" target=\"_blank\">Gigulate</a> and <a href=\"http://www.last.fm\" target=\"_blank\">Last.FM</a>. Content supported by <a href=\"http://backstage.bbc.co.uk\" target=\"_blank\">backstage.bbc.co.uk</a>.";
+  } else {
+    $output .= "<h1 class=\"title\">Unknown Artist</h1><br />";
+  }
+
+  return t($output);
+
+}

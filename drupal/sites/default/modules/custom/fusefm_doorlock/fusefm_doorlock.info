@@ -1,0 +1,12 @@
+; $Id$
+name = FuseFM Door Lock
+description = Provides control of door lock settings and viewing of logs
+dependencies[] = views
+dependencies[] = content
+dependencies[] = userreference
+dependencies[] = ldapauth
+dependencies[] = ldapgroups
+package = FuseFM Custom
+core = 6.x
+php = 5.2
+

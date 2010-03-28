@@ -1,0 +1,10 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Adds various custom extensions to the Station modules for FuseFM
+ *
+ * Add actions/triggers using Rules as detailed in README.txt
+*/
+

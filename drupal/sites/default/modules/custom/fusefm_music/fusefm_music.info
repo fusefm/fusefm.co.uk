@@ -1,0 +1,7 @@
+; $Id$
+name = FuseFM Music
+description = Provides control of door lock settings and viewing of logs
+package = FuseFM Custom
+core = 6.x
+php = 5.2
+

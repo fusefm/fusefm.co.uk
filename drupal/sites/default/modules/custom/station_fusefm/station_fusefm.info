@@ -1,0 +1,14 @@
+; $Id$
+name = Station - FuseFM Extensions
+description = Module to add actions/triggers for broadcast period control and automation.
+dependencies[] = station
+dependencies[] = station_program
+dependencies[] = station_schedule
+dependencies[] = views
+dependencies[] = content
+dependencies[] = userreference
+dependencies[] = rules
+package = FuseFM Custom
+core = 6.x
+php = 5.2
+

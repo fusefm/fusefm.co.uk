@@ -1,0 +1,63 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Provides settings interface and logs for FuseFM door lock
+*/
+
+/**
+* Display help and module information
+* @param path which path of the site we're displaying help
+* @param arg array that holds the current path as would be returned from arg() function
+* @return help text for the path
+*/
+function fusefm_doorlock_help($path, $arg) {
+  switch ($path) {
+    case 'admin/settings/fusefm/doorlock':
+      return t("These settings allow you to configure the settings for the door lock. LDAP server settings are inherited from the LDAP authentication module.");
+  }
+} // function fusefm_doorlock_help
+
+/**
+* Valid permissions for this module
+* @return array An array of valid permissions for the fusefm_doorlock module
+*/
+function fusefm_doorlock_perm() {
+  return array('access fusefm_doorlock logs', 'modify fusefm_doorlock settings', 'modify fusefm_doorlock rules');
+} // function fusefm_doorlock_perm()
+
+/**
+* Implementation of hook_menu().
+*/
+function fusefm_doorlock_menu() {
+  $items['admin/settings/fusefm_doorlock'] = array(
+    'title' => 'Door Lock settings',
+    'description' => 'Change how the door lock behaves.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('fusefm_doorlock_admin_settings'),
+    'access arguments' => array('modify fusefm_doorlock settings'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'fusefm_doorlock.admin.inc',
+  );
+  return $items;
+} // function fusefm_doorlock_menu()
+
+function fusefm_doorlock_nodeapi(&$node, $op) {
+        if ($op == 'rss item') {
+          $object = user_load(array('name' => $node->name));
+	  if ($object->uid && $object->name) {
+	    if ($object->profile_givenName." ".$object->profile_sn) {
+	      if (drupal_strlen($object->profile_givenName." ".$object->profile_sn) > 20) {
+		$name = drupal_substr($object->profile_givenName." ".$object->profile_sn, 0, 15) .'...';
+      	      }
+	      else {
+		$name = $object->profile_givenName." ".$object->profile_sn;
+	      }
+	    }
+	    $output = check_plain($name);
+          }
+	  $node->name = $name;
+        }
+        return array();
+}
