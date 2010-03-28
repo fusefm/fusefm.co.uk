@@ -573,6 +573,13 @@ function wysiwyg_tinymce_plugins($editor) {
       'internal' => TRUE,
       'load' => TRUE,
     );
+    $plugins['pagebreak'] = array(
+      'path' => $editor['library path'] .'/plugins/pagebreak',
+      'buttons' => array('pagebreak' => t('Pagebreak Teaser')),
+      'url' => 'http://wiki.moxiecode.com/index.php/TinyMCE:Plugins/pagebreak',
+      'internal' => TRUE,
+      'load' => TRUE,
+    );
   }
   return $plugins;
 }
