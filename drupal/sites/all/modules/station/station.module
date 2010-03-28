@@ -333,8 +333,9 @@ function station_get_program_at($timestamp, $schedule_nid) {
  */
 function station_block_current_program() {
   $schedule = station_default_schedule();
-  $program = station_get_program_at(time(), $schedule['nid']);
-  return theme('station_block_current_program', $schedule, $program);
+  $current_program = station_get_program_at(time(), $schedule['nid']);
+  $next_program = station_get_program_at(time() + 7200, $schedule['nid']);
+  return theme('station_block_current_program', $schedule, $current_program, $next_program);
 }
 
 /**
@@ -346,14 +347,25 @@ function station_block_current_program() {
  *   Program node object.
  * @return string
  */
-function theme_station_block_current_program($schedule, $program) {
+function theme_station_block_current_program($schedule, $program, $next_program) {
+  include(DRUPAL_ROOT . '/nowPlaying.php');
   // Program or unscheduled...
   if ($program) {
-    $output = l($program->title, $program->node_url) .'<br />';
+    $output = l('Now: ' . $program->title, $program->node_url) .'<br />';
   }
   else {
     $output = check_plain($schedule['unscheduled_message']) .'<br />';
   }
+
+  $nowPlaying = custom_nowPlaying();
+  if ($nowPlaying != "") {
+    $output .= 'Now Playing: ' . check_plain($nowPlaying) . '<br />';
+  }
+  if ($next_program) {
+    $output .= l('Next: ' . $next_program->title, $next_program->node_url) . '<br />';
+  }
+
+  $output .= '<br />' . l('Listen Now', 'https://fusefm.co.uk/listen/');
 
   // Streams
   $output .= theme('station_streams', $schedule['streams']);
