@@ -1,20 +1,7 @@
 <?php
-// $Id: blocks404.module,v 1.4 2009/01/06 06:42:50 johnalbin Exp $
+// $Id: blocks404.module,v 1.5 2010/03/25 18:43:43 johnalbin Exp $
 
 define('BLOCKS404_PAGE', 'blocks404');
-
-/**
- * Implements hook_init().
- */
-function blocks404_init() {
-  // If site_404 is not set, all menu-related items disappear on 404.
-  $site_404 = variable_get('site_404', '');
-  if ($site_404 == '') {
-    variable_set('site_404', BLOCKS404_PAGE);
-  }
-  // drupal_not_found() sets $_GET['q'] to the site_404 variable, so make a copy.
-  define('BLOCKS404_ORIGINAL_QUERY', $_GET['q']);
-}
 
 /**
  * Implements hook_menu().
@@ -37,12 +24,20 @@ function blocks404_404_page() {
 }
 
 /**
- * Renders the left and right regions and resets the body classes on 404 pages.
+ * Implements hook_theme_registry_alter().
  */
-function blocks404_preprocess_page(&$vars, $hook) {
+function blocks404_theme_registry_alter(&$theme_registry) {
+  // Insert our preprocess function ahead of template_preprocess_page().
+  array_unshift($theme_registry['page']['preprocess functions'], 'blocks404_preprocess_show_blocks');
+}
+
+/**
+ * Renders the left and right regions on 404 pages.
+ */
+function blocks404_preprocess_show_blocks(&$vars, $hook) {
   if (strpos(drupal_get_headers(), 'HTTP/1.1 404 Not Found') !== FALSE) {
-    module_load_include('inc', 'blocks404', 'blocks404.active');
-    _blocks404_preprocess_page($vars);
+    // Show all regions.
+    $vars['show_blocks'] = TRUE;
   }
 }
 
@@ -53,6 +48,18 @@ function blocks404_form_system_error_reporting_settings_alter(&$form, $form_stat
   // Since we don't care what site_404 is set to, let the user set it if they want.
   if ($form['site_404']['#default_value'] == BLOCKS404_PAGE) {
     $form['site_404']['#default_value'] = '';
+  }
+  // Insert our submit handler first.
+  array_unshift($form['#submit'], 'blocks404_site_404_submit');
+}
+
+/**
+ * Submit callback for system_error_reporting_settings form.
+ */
+function blocks404_site_404_submit($form, &$form_state) {
+  // Make sure site_404 is not empty.
+  if ($form_state['values']['site_404'] == '') {
+    $form_state['values']['site_404'] = BLOCKS404_PAGE;
   }
 }
 

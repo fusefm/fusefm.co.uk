@@ -1,4 +1,10 @@
-// $Id: CHANGELOG.txt,v 1.4 2009/07/01 08:42:35 johnalbin Exp $
+// $Id: CHANGELOG.txt,v 1.7 2010/03/25 19:00:16 johnalbin Exp $
+
+404 Blocks 6.x-1.2, 2010-03-25
+------------------------------
+- #752448 by JohnAlbin and Alan D.: Simplify module by moving preprocess before
+  template_preprocess_page
+- #694666: Compatibility with Zen 6.x-2.x theme
 
 404 Blocks 6.x-1.1, 2009-07-01
 ------------------------------
@@ -8,4 +14,4 @@
 
 404 Blocks 6.x-1.0, 2009-01-06
 ------------------------------
-- Initial release.
+- Initial release
