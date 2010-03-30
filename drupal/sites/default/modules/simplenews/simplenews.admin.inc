@@ -1,5 +1,5 @@
 <?php
-// $Id: simplenews.admin.inc,v 1.5.2.51 2009/05/08 07:56:43 sutharsan Exp $
+// $Id: simplenews.admin.inc,v 1.5.2.53 2010/01/02 21:04:31 sutharsan Exp $
 
 /**
  * @file
@@ -146,7 +146,7 @@ function simplenews_admin_types_form(&$form_state, $tid = NULL) {
     '#title' => t('Newsletter name'),
     '#size' => 50,
     '#maxlength' => 128,
-    '#description' => t('This name of this newsletter.'),
+    '#description' => t('The name of this newsletter.'),
     '#required' => TRUE,
     '#default_value' => isset($term->name) ? $term->name : '',
   );
@@ -896,7 +896,7 @@ function simplenews_admin_settings_mail(&$form_state) {
     '#type' => 'checkbox',
     '#title' => t('Use cron to send newsletters'),
     '#default_value' => variable_get('simplenews_use_cron', TRUE),
-    '#description' => t('When checked cron will be used to send newsletters (recommended). Test newsletters and confirmation emails will be send immediately. Leave unchecked for testing purposes.'),
+    '#description' => t('When checked cron will be used to send newsletters (recommended). Test newsletters and confirmation emails will be sent immediately. Leave unchecked for testing purposes.'),
   );
   $throttle = drupal_map_assoc(array(1, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000));
   $throttle[999999] = t('Unlimited');
