@@ -198,6 +198,7 @@
   {
     width: 200px;
     margin-right: -200px; /* Negative value of #search-box's width. */
+    margin-top: -50px;
     float: left;
   }
 
