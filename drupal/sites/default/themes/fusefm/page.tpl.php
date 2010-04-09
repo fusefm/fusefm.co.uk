@@ -223,7 +223,7 @@ none;' alt='Get Google Chrome'/>
 
       </div></div> <!-- /#content-inner, /#content -->
 
-      <?php if ($search_box || $primary_links || $secondary_links || $navbar): ?>
+      <?php if ($primary_links || $secondary_links || $navbar): ?>
         <div id="navbar"><div id="navbar-inner" class="clear-block region region-navbar">
 
           <a name="navigation" id="navigation"></a>
@@ -241,12 +241,6 @@ none;' alt='Get Google Chrome'/>
 		</a></strong></div>
         </div> <!-- /#logo-title -->
       <?php endif; ?>
-
-          <?php if ($search_box): ?>
-            <div id="search-box">
-              <?php print $search_box; ?>
-            </div> <!-- /#search-box -->
-          <?php endif; ?>
 
           <?php if ($primary_links): ?>
             <div id="primary">
@@ -273,6 +267,11 @@ none;' alt='Get Google Chrome'/>
 
       <?php if ($right): ?>
         <div id="sidebar-right"><div id="sidebar-right-inner" class="region region-right">
+          <?php if ($search_box): ?>
+            <div id="search-box">
+              <?php print $search_box; ?>
+            </div> <!-- /#search-box -->
+          <?php endif; ?>
           <?php print $right; ?>
         </div></div> <!-- /#sidebar-right-inner, /#sidebar-right -->
       <?php endif; ?>
