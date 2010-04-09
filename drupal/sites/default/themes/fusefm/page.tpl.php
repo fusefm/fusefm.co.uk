@@ -89,42 +89,79 @@
   <?php print $styles; ?>
   <?php print $scripts; ?>
 </head>
+
 <body class="<?php print $body_classes; ?>" style="background-image: url(https://fusefm.co.uk/sites/default/themes/fusefm/images/fusebg.jpg); background-attachment: fixed;">
+
 <?php if ($is_front): ?>
-    <!--[if lt IE 8]>
+<!--[if lt IE 8]>
   <div style='border: 1px solid #F7941D; background: #FEEFDA; text-align: center; clear: both; height: 75px; position: relative;'>
-    <div style='position: absolute; right: 3px; top: 3px; font-family: courier new; font-weight: bold;'><a href='#' 
-onclick='javascript:this.parentNode.parentNode.style.display="none"; return false;'><img src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-cornerx.jpg' style='border: 
-none;' alt='Close this notice'/></a></div>
+    <div style='position: absolute; right: 3px; top: 3px; font-family: courier new; font-weight: bold;'>
+      <a href='#' 
+onclick='javascript:this.parentNode.parentNode.style.display="none"; return false;'>
+        <img src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-cornerx.jpg' style='border: 
+none;' alt='Close this notice'/>
+      </a>
+    </div>
     <div style='width: 640px; margin: 0 auto; text-align: left; padding: 0; overflow: hidden; color: black;'>
-      <div style='width: 75px; float: left;'><img src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-warning.jpg' alt='Warning!'/></div>
-      <div style='width: 275px; float: left; font-family: Arial, sans-serif;'>
-        <div style='font-size: 14px; font-weight: bold; margin-top: 12px;'>You are using an outdated browser</div>
-        <div style='font-size: 12px; margin-top: 6px; line-height: 12px;'>For a better experience using this site, please upgrade to a modern web browser.</div>
+      <div style='width: 75px; float: left;'>
+        <img src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-warning.jpg' alt='Warning!'/>
       </div>
-      <div style='width: 75px; float: left;'><a href='http://www.firefox.com' target='_blank'><img src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-firefox.jpg' 
-style='border: none;' alt='Get Firefox 3.5'/></a></div>
-      <div style='width: 75px; float: left;'><a href='http://www.browserforthebetter.com/download.html' target='_blank'><img src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-ie8.jpg' style='border: none;' alt='Get Internet Explorer 8'/></a></div>
-      <div style='width: 73px; float: left;'><a href='http://www.apple.com/safari/download/' target='_blank'><img 
-src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-safari.jpg' style='border: none;' alt='Get Safari 4'/></a></div>
-      <div style='float: left;'><a href='http://www.google.com/chrome' target='_blank'><img src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-chrome.jpg' style='border: 
-none;' alt='Get Google Chrome'/></a></div>
+      <div style='width: 275px; float: left; font-family: Arial, sans-serif;'>
+        <div style='font-size: 14px; font-weight: bold; margin-top: 12px;'>
+          You are using an outdated browser
+        </div>
+        <div style='font-size: 12px; margin-top: 6px; line-height: 12px;'>
+          For a better experience using this site, please upgrade to a modern web browser.
+        </div>
+      </div>
+      <div style='width: 75px; float: left;'>
+        <a href='http://www.firefox.com' target='_blank'>
+          <img src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-firefox.jpg' 
+style='border: none;' alt='Get Firefox 3.5'/>
+        </a>
+      </div>
+      <div style='width: 75px; float: left;'>
+        <a href='http://www.browserforthebetter.com/download.html' target='_blank'>
+          <img src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-ie8.jpg' style='border: none;' alt='Get Internet Explorer 8'/>
+        </a>
+      </div>
+      <div style='width: 73px; float: left;'>
+        <a href='http://www.apple.com/safari/download/' target='_blank'>
+          <img 
+src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-safari.jpg' style='border: none;' alt='Get Safari 4'/>
+        </a>
+      </div>
+      <div style='float: left;'>
+        <a href='http://www.google.com/chrome' target='_blank'>
+          <img src='https://fusefm.co.uk/sites/default/themes/fusefm/images/ie6nomore-chrome.jpg' style='border: 
+none;' alt='Get Google Chrome'/>
+        </a>
+      </div>
     </div>
   </div>
-  <![endif]-->
+<![endif]-->
 <?php endif; ?>
-<script type="text/javascript" id="meebo-script"> 
-   var Meebo = {exec:function(){Meebo._.push(arguments)},_:[]}; 
-       window.onload = function onLoad() {  
-           /*   Include calls to Meebo functions here. Using onload ensures the DOM has loaded before calling Meebo 
-functions. 
-                                           Meebo functions can alternatively be placed in your own onload function if 
-preferable  */
-           Meebo.exec('makeAllSharable', {rootElement:"content-inner", minHeight:75,minWidth:75});
-       }
-</script> 
-<div id="meebo" style="display:none"><iframe id="meebo-iframe" 
-src="/meebo.html?network=fusefm"></iframe></div>
+
+<script type="text/javascript">
+	if (typeof Meebo == 'undefined') {
+		Meebo=function(){(Meebo._=Meebo._||[]).push(arguments)};
+		(function(q){
+			var d=document,b=d.body;
+			if(!b){
+				var cb=arguments.callee;
+				return setTimeout(function(){cb(q)},100);
+			}
+			var m=b.insertBefore(d.createElement('div'), b.firstChild), s=d.createElement('script');
+			m.id='meebo';
+			m.style.display='none';
+			m.innerHTML='<iframe id="meebo-iframe" frameBorder="0"></iframe>';
+			s.src='http'+(q.https?'s':'')+'://'+(q.stage?'stage-':'')+'cim.meebo.com/cim/cim.php?network='+q.network;
+			d.getElementsByTagName('head')[0].appendChild(s);
+		})
+		({network: 'fusefm', stage: false});
+	}
+</script>
+
   <div id="page"><div id="page-inner">
 
     <a name="top" id="navigation-top"></a>
@@ -261,5 +298,17 @@ src="/meebo.html?network=fusefm"></iframe></div>
   <?php //endif; ?>
 
   <?php print $closure; ?>
+
+<script type="text/javascript">
+	Meebo('domReady');
+	Meebo('discoverSharable', {
+		element:"content-inner",
+		minHeight:75,
+		minWidth:75,
+		description:"Shared from fusefm.co.uk",
+		tweet:"Shared from fusefm.co.uk"
+	});
+</script>
+
 </body>
 </html>
