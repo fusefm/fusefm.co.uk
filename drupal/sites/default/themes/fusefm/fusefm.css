@@ -27,7 +27,6 @@
  *   User Profiles    See line 945 of Zen's drupal6-reference.css file
  */
 
-
 /** body **/
   body
   {
@@ -41,15 +40,15 @@
   	padding: 4px;
   	border-style: solid;
   	border-width: 1px;
-	background-color: white;
-	margin-top: 5px;
+	  background-color: white;
+  	margin-top: 5px;
   }
 
   #page-inner
   {
-	background-image: url(https://fusefm.co.uk/sites/default/themes/fusefm/images/header.jpg);
-	background-repeat: no-repeat;
-	background-color: #d8b468;
+	  background-image: url(https://fusefm.co.uk/sites/default/themes/fusefm/images/header.jpg);
+  	background-repeat: no-repeat;
+  	background-color: #d8b468;
   }
 
 /** header **/
@@ -125,8 +124,8 @@
   	padding: 5px;
   	background-color: #f8eee5;
   	-webkit-box-shadow: 2px 2px 3px rgb(62,62,62);
-	-moz-box-shadow: 2px 2px 3px rgb(62,62,62);
-	box-shadow: 2px 2px 3px rgb(62,62,62);
+	  -moz-box-shadow: 2px 2px 3px rgb(62,62,62);
+  	box-shadow: 2px 2px 3px rgb(62,62,62);
   }
 
   #content-inner
@@ -173,12 +172,12 @@
 
   h2
   {
-	font-size: 1.25em;
-        border-top-color: #cccccc;
-        border-top-style: solid;
-        border-top-width: 1px;
-        background-color: #f2eaf7;
-	color: #64436D;
+	  font-size: 1.25em;
+    border-top-color: #cccccc;
+    border-top-style: solid;
+    border-top-width: 1px;
+    background-color: #f2eaf7;
+	  color: #64436D;
   }
 
   div.messages /* Important messages (status, warning, and error) for the user */
@@ -245,24 +244,38 @@
 
   #navbar-inner
   {
-	background-color: rgb(250,244,228);
-	background-color: rgba(250,244,228,0.8);
-	filter: alpha(opacity=85); /* Horrible tag for IE */
+	  background-color: rgb(250,244,228);
+  	background-color: rgba(250,244,228,0.8);
+  	filter: alpha(opacity=85); /* Horrible tag for IE */
   	-webkit-box-shadow: 2px 2px 3px rgb(62,62,62);
-	-moz-box-shadow: 2px 2px 3px rgb(62,62,62);
-	box-shadow: 2px 2px 3px rgb(62,62,62);
-	border-width: 1px;
-        border-style: solid;
-        border-color: #917a97;
+	  -moz-box-shadow: 2px 2px 3px rgb(62,62,62);
+  	box-shadow: 2px 2px 3px rgb(62,62,62);
+  	border-width: 1px;
+    border-style: solid;
+    border-color: #917a97;
   }
 
   #search-box /* Wrapper for the search form */
   {
+    background-color: rgb(250,244,228);
+  	background-color: rgba(250,244,228,0.8);
+  	filter: alpha(opacity=85); /* Horrible tag for IE */
+    -webkit-box-shadow: 2px 2px 3px rgb(62,62,62);
+  	-moz-box-shadow: 2px 2px 3px rgb(62,62,62);
+  	box-shadow: 2px 2px 3px rgb(62,62,62);
+  	border-width: 1px;
+    border-style: solid;
+    border-color: #917a97;
   }
 
   #edit-search-theme-form-1-wrapper label /* Label that says "Search this site:" */
   {
     display: none;
+  }
+  
+  #edit-search-theme-form-1
+  {
+    width: 100px;
   }
 
   #primary /* Primary links */
@@ -317,12 +330,12 @@
                      and for any blocks placed in the footer region */
   {
   	text-align: center;
-	font-size: 0.8em;
+	  font-size: 0.8em;
   }
   
   #footer-message a:link, #footer-message a:hover, #footer-message a:visited
   {
-	color: black;
+	  color: black;
   }
 
 /** closure **/
@@ -369,8 +382,8 @@
 
   .node-teaser /* A node displayed as teaser */
   {
-	clear: both;
-	margin-bottom: 10px;
+  	clear: both;
+  	margin-bottom: 10px;
   }
 
   /* All nodes are given a node-type-FOO class that describes the type of
@@ -404,7 +417,7 @@
   }
 
   .node.node-unpublished .picture,
-	  .comment.comment-unpublished .picture
+	.comment.comment-unpublished .picture
   {
     position: relative; /* Otherwise floated pictures will appear below the "Unpublished" text. */
   }
@@ -599,33 +612,33 @@
 
   .block h2.title /* Block title */
   {
-  	margin-bottom: 4px;
-  	text-transform: uppercase;
-  	font-weight: bold;
-  	color: #5f4457;
-	font-size: 1.3em;
-	font: Impact, Comic Sans, Comic Sans MS, sans-serif;
-  	padding: 3px;
-	padding-left: 6px;
-  	border-color: #8d8185;
-  	border-style: ridge;
-  	border-width: 1px;
-  	background-color: #faf4e4;
-  	-webkit-box-shadow: 2px 2px 3px rgb(62,62,62);
-	-moz-box-shadow: 2px 2px 3px rgb(62,62,62);
-	box-shadow: 2px 2px 3px rgb(62,62,62);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-weight: bold;
+    color: #5f4457;
+  	font-size: 1.3em;
+  	font: Impact, Comic Sans, Comic Sans MS, sans-serif;
+    padding: 3px;
+  	padding-left: 6px;
+    border-color: #8d8185;
+    border-style: ridge;
+    border-width: 1px;
+    background-color: #faf4e4;
+    -webkit-box-shadow: 2px 2px 3px rgb(62,62,62);
+  	-moz-box-shadow: 2px 2px 3px rgb(62,62,62);
+  	box-shadow: 2px 2px 3px rgb(62,62,62);
   }
 
   .block .content /* Block's content wrapper */
   {
-  	padding: 3px;
-  	border-color: #8d8185;
-  	border-style: ridge;
-  	border-width: 1px;
-  	background-color: #faf4e4;
-  	-webkit-box-shadow: 2px 2px 3px rgb(62,62,62);
-	-moz-box-shadow: 2px 2px 3px rgb(62,62,62);
-	box-shadow: 2px 2px 3px rgb(62,62,62);
+    padding: 3px;
+    border-color: #8d8185;
+    border-style: ridge;
+    border-width: 1px;
+    background-color: #faf4e4;
+    -webkit-box-shadow: 2px 2px 3px rgb(62,62,62);
+  	-moz-box-shadow: 2px 2px 3px rgb(62,62,62);
+  	box-shadow: 2px 2px 3px rgb(62,62,62);
   }
 
   #block-aggregator-category-1 /* Block for the latest news items in the first category */
@@ -638,55 +651,55 @@
 
   #block-block-4 /* Outside Profiles block */
   {
-	/* margin-top: -50px; */
+	  /* margin-top: -50px; */
   }
 
   #block-block-4 .content
   {
-	height: 33px;
-	background-color: rgb(250,244,228);
-        background-color: rgba(250,244,228,0.8);
-        filter: alpha(opacity=85); /* Horrible tag for IE */
+	  height: 33px;
+  	background-color: rgb(250,244,228);
+    background-color: rgba(250,244,228,0.8);
+    filter: alpha(opacity=85); /* Horrible tag for IE */
   }
 
   .facebook-icon, .youtube-icon, .twitter-icon, .picasa-icon, .lastfm-icon
   {
-	display: inline;
-	margin-left: 4px;
-	margin-right: 4px;
+	  display: inline;
+  	margin-left: 4px;
+  	margin-right: 4px;
   }
 
   .icons
   {
-	text-align: center;
-	margin-top: 2px;
+	  text-align: center;
+  	margin-top: 2px;
   }
 
   #block-block-2 /* Currently offair */
   {
-  	text-align: center;
+    text-align: center;
   }
 
   #block-station-0 .content /* Current Show */
   {
-        text-align: center;
-  	padding: 13px;
+    text-align: center;
+    padding: 13px;
   }
 
   #block-block-5
   {
-	text-align: center;
+	  text-align: center;
   }
   
   #block-block-6 .content
   {
-	background-color: white;
-	border-style: none;
-	padding: 0;
-	-webkit-box-shadow: 0px 0px 0px rgb(0,0,0);
-        -moz-box-shadow: 0px 0px 0px rgb(0,0,0);
-        box-shadow: 0px 0px 0px rgb(0,0,0);
-	height:75px;
+	  background-color: white;
+  	border-style: none;
+  	padding: 0;
+  	-webkit-box-shadow: 0px 0px 0px rgb(0,0,0);
+    -moz-box-shadow: 0px 0px 0px rgb(0,0,0);
+    box-shadow: 0px 0px 0px rgb(0,0,0);
+  	height:75px;
   }
 
   #block-blog-0 /* "Recent blog posts" block */
@@ -932,60 +945,60 @@
   }
 
   div.view div.views-admin-links {
-	font-size: xx-small;
-	margin-right: 1em;
-	margin-top: 1em;
-	width: 50%;
+	  font-size: xx-small;
+	  margin-right: 1em;
+	  margin-top: 1em;
+	  width: 50%;
   }
 
 /** Committee View **/
 
   .view-committee .views-field-value-5
   {
-	font-size: 1.25em;
-	color: #594756;
-        border-top-color: #cccccc;
-        border-top-style: solid;
-        border-top-width: 1px;
-        background-color: #f2eaf7;
-	line-height: 1.3em;
-	font-weight: bold;
-	clear: both;
+	  font-size: 1.25em;
+	  color: #594756;
+    border-top-color: #cccccc;
+    border-top-style: solid;
+    border-top-width: 1px;
+    background-color: #f2eaf7;
+	  line-height: 1.3em;
+	  font-weight: bold;
+	  clear: both;
   }
 
   .view-committee .views-field-value-2 .views-label-value-2
   {
-	font-weight: bold;
+	  font-weight: bold;
   }
 
   .view-committee .views-field-value-3 .views-label-value-3
   {
-        font-weight: bold;
+    font-weight: bold;
   }
 
   .view-committee .views-field-name
   {
-	font-size: 1.15em;
+	  font-size: 1.15em;
   }
 
   .view-committee .views-field-picture
   {
-	float: right;
-	margin-top: 10px;
-	margin-bottom: 15px;
-	margin-right: 15px;
-	margin-left 20px;
+	  float: right;
+	  margin-top: 10px;
+	  margin-bottom: 15px;
+	  margin-right: 15px;
+	  margin-left 20px;
   }
 
   img.mceItem
   {
-	display: inline;
-	margin-bottom: 10px;
+	  display: inline;
+  	margin-bottom: 10px;
   }
 
   .advertisement
   {
-	margin-left: 16px;
+	  margin-left: 16px;
   }
 
   table.sticky-enabled
@@ -994,30 +1007,30 @@
   }
 
   table.views-view-grid {
-	border-width: 0px;
-	border-spacing: ;
-	border-style: solid;
-	border-color: gray;
-	border-collapse: separate;
-	background-color: white;
+	  border-width: 0px;
+  	border-spacing: ;
+  	border-style: solid;
+  	border-color: gray;
+  	border-collapse: separate;
+  	background-color: white;
   }
   
   table.views-view-grid th {
-	border-width: 1px;
-	padding: 1px;
-	border-style: solid;
-	border-color: gray;
-	background-color: white;
-	-moz-border-radius: ;
+	  border-width: 1px;
+  	padding: 1px;
+  	border-style: solid;
+  	border-color: gray;
+  	background-color: white;
+  	-moz-border-radius: ;
   }
   
   table.views-view-grid td {
-	border-width: 1px;
-	padding: 1px;
-	border-style: solid;
-	border-color: gray;
-	background-color: white;
-	-moz-border-radius: ;
+	  border-width: 1px;
+  	padding: 1px;
+  	border-style: solid;
+  	border-color: gray;
+  	background-color: white;
+  	-moz-border-radius: ;
   }
 
   .views-view-grid label {

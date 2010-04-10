@@ -1,12 +1,12 @@
   #navbar-inner
   {  
    	background-color: rgb(250,244,228);
-        /*background-color: rgba(250,244,228,0.8);
-        filter: alpha(opacity=100); Horrible tag for IE */
-        -webkit-box-shadow: 2px 2px 3px rgb(62,62,62);
-        -moz-box-shadow: 2px 2px 3px rgb(62,62,62);
-        box-shadow: 2px 2px 3px rgb(62,62,62);
-        border-width: 1px;
-        border-style: solid;
-        border-color: #917a97;
+    /*background-color: rgba(250,244,228,0.8);
+    filter: alpha(opacity=100); Horrible tag for IE */
+    -webkit-box-shadow: 2px 2px 3px rgb(62,62,62);
+    -moz-box-shadow: 2px 2px 3px rgb(62,62,62);
+    box-shadow: 2px 2px 3px rgb(62,62,62);
+    border-width: 1px;
+    border-style: solid;
+    border-color: #917a97;
   }

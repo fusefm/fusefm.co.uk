@@ -191,13 +191,13 @@
 
   #navbar-inner
   {
-	margin-right: 3px;
+	  margin-right: 3px;
   }
 
   #search-box
   {
-    width: 200px;
-    margin-right: -200px; /* Negative value of #search-box's width. */
+    width: 180px;
+    margin-right: -180px; /* Negative value of #search-box's width. */
     margin-top: -50px;
     float: left;
   }
