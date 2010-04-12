@@ -266,6 +266,7 @@
   	border-width: 1px;
     border-style: solid;
     border-color: #917a97;
+    padding: 3px;
   }
 
   #edit-search-theme-form-1-wrapper label /* Label that says "Search this site:" */
