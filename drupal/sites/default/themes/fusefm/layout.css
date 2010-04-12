@@ -196,9 +196,9 @@
 
   #search-box
   {
-    width: 180px;
+    width: 200px;
     margin-right: -180px; /* Negative value of #search-box's width. */
-    margin-top: -44px;
+    margin-top: -46px;
     float: left;
   }
 
