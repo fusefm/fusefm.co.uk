@@ -29,8 +29,8 @@ function fusefm_music_generate_page($artist='', $track='', $mbid='') {
   // STILL NEED TO SOURCE GIGS AND NEWS FROM GIGULATE
   // PLUS ALL TRACKS BY THE ARTIST IN THE FUSE COLLECTION
 
-  include('/mnt/webarray/pubwww/drupal/fusic/dbinfo.php');
-  include('/mnt/webarray/pubwww/drupal/fusic/content.php');
+  include('../../../../../fusic/dbinfo.php');
+  include('../../../../../fusic/content.php');
 
   if (stristr($mbid,";") OR stristr($artist,";") OR stristr($track,";")) {
     die("Hacking attempt");
@@ -40,7 +40,7 @@ function fusefm_music_generate_page($artist='', $track='', $mbid='') {
 
     if ($mbid == "") {
       // Do MusicBrainz query for artist mbid
-      require_once("/mnt/webarray/pubwww/drupal/fusic/phpbrainz/phpBrainz.class.php");
+      require_once("../../../../../fusic/phpbrainz/phpBrainz.class.php");
       //Create new phpBrainz object
       $phpBrainz = new phpBrainz();
       $args = array(
