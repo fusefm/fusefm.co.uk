@@ -216,7 +216,7 @@ function getrecentlyplayed() {
 
 // Returns a full list of tracks we have by a particular artist
 function getfusetracks($mbid,$artist) {
-  $query = mysql_query("SELECT DISTINCT File_Title FROM tbl_files WHERE File_MusicBrainzArtist = '$mbid' OR File_Artist LIKE '$artist' ORDER BY File_Title");
+  $query = mysql_query("SELECT DISTINCT File_Title FROM tbl_files WHERE (File_MusicBrainzArtist = '$mbid' OR File_Artist LIKE '$artist') AND Show_ID = '0' ORDER BY File_Title");
   while($row = mysql_fetch_array($query)){
     $trackretarray[] = $row['File_Title'];
   }
