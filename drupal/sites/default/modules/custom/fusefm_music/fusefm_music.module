@@ -29,8 +29,8 @@ function fusefm_music_generate_page($artist='', $track='', $mbid='') {
   // STILL NEED TO SOURCE GIGS AND NEWS FROM GIGULATE
   // PLUS ALL TRACKS BY THE ARTIST IN THE FUSE COLLECTION
 
-  include('../../../../../fusic/dbinfo.php');
-  include('../../../../../fusic/content.php');
+  include('fusic/dbinfo.php');
+  include('fusic/content.php');
 
   if (stristr($mbid,";") OR stristr($artist,";") OR stristr($track,";")) {
     die("Hacking attempt");
@@ -40,7 +40,7 @@ function fusefm_music_generate_page($artist='', $track='', $mbid='') {
 
     if ($mbid == "") {
       // Do MusicBrainz query for artist mbid
-      require_once("../../../../../fusic/phpbrainz/phpBrainz.class.php");
+      require_once("fusic/phpbrainz/phpBrainz.class.php");
       //Create new phpBrainz object
       $phpBrainz = new phpBrainz();
       $args = array(
@@ -123,7 +123,7 @@ function fusefm_music_generate_page($artist='', $track='', $mbid='') {
       $output .= "<br />View all of our shows <a href=\"/shows\">here</a>";
     }
     
-    // Print tracks in the Fuse collection
+    // Print tracks in the Fuse collection - seems this was lost
     $fusetracks = getfusetracks($mbid,$artist);
     if ($fusetracks[0] != "") {
       $output .= "<h2>Tracks In Our Collection</h2>";
@@ -131,7 +131,7 @@ function fusefm_music_generate_page($artist='', $track='', $mbid='') {
         $output .= $fusetracks[$i] . "<br />";
       }
     }
-
+		
     $output .= "<h2>Data Sources</h2>";
     $output .= "Data on this page is generated automatically by <a href=\"http://www.bbc.co.uk/music\" target=\"_blank\">BBC Music</a> and other connected sources including <a href=\"http://www.wikipedia.org\" target=\"_blank\">Wikipedia</a>, <a href=\"http://www.musicbrainz.org\" target=\"_blank\">MusicBrainz</a>, <a href=\"http://www.gigulate.com\" target=\"_blank\">Gigulate</a> and <a href=\"http://www.last.fm\" target=\"_blank\">Last.FM</a>. Content supported by <a href=\"http://backstage.bbc.co.uk\" target=\"_blank\">backstage.bbc.co.uk</a>.";
   } else {
