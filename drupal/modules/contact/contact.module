@@ -190,7 +190,7 @@ function contact_mail($key, &$message, $params) {
     case 'page_copy':
       $contact = $params['contact'];
       $message['subject'] .= t('[!category] !subject', array('!category' => $contact['category'], '!subject' => $params['subject']), $language->language);
-      $message['body'][] = t("!name sent a message using the contact form at !form.", array('!name' => $params['name'], '!form' => url($_GET['q'], array('absolute' => TRUE, 'language' => $language))), $language->language);
+      $message['body'][] = t("!name (!email) sent a message using the contact form at !form.", array('!name' => $params['name'], '!email' => $params['mail'], '!form' => url($_GET['q'], array('absolute' => TRUE, 'language' => $language))), $language->language);
       $message['body'][] = $params['message'];
       break;
     case 'page_autoreply':
