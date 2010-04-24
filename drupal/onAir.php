@@ -6,8 +6,8 @@ $xmlrpc_client = new xmlrpc_client('/xmlrpc.php','192.168.180.116',443,'https');
 
 // 2: CONSTRUCT THE REQUEST (AN XML-RPC MESSAGE) 
 
-$xmlrpc_msg_now = new xmlrpcmsg('station.program.get.at', array(new xmlrpcval(time(),'int'),new xmlrpcval(1126,'int'))); 
-$xmlrpc_msg_next = new xmlrpcmsg('station.program.get.at', array(new xmlrpcval(time()+7200,'int'),new xmlrpcval(1126,'int')));
+$xmlrpc_msg_now = new xmlrpcmsg('station.program.get.at', array(new xmlrpcval(time(),'int'),new xmlrpcval(1406,'int'))); 
+$xmlrpc_msg_next = new xmlrpcmsg('station.program.get.at', array(new xmlrpcval(time()+7200,'int'),new xmlrpcval(1406,'int')));
 
 // 3: SEND THE REQUEST 
 
