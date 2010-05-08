@@ -302,8 +302,8 @@ none;' alt='Get Google Chrome'/>
 	Meebo('domReady');
 	Meebo('discoverSharable', {
 		element:"content-inner",
-		minHeight:75,
-		minWidth:75,
+		minHeight:120,
+		minWidth:120,
 		description:"Shared from fusefm.co.uk",
 		tweet:"Shared from fusefm.co.uk"
 	});
