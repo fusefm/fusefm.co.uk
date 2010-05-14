@@ -1,5 +1,5 @@
 <?php
-// $Id: itunes.views_default.inc,v 1.3 2009/07/31 23:18:51 drewish Exp $
+// $Id: itunes.views_default.inc,v 1.4 2009/08/01 16:20:08 drewish Exp $
 
 /**
  * @file
@@ -25,7 +25,7 @@ function itunes_views_default_views() {
   $view->base_table = 'node';
   $view->is_cacheable = FALSE;
   $view->api_version = 2;
-  $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+  $view->disabled = TRUE; /* Edit this to true to make a default view disabled initially */
   $handler = $view->new_display('default', 'Defaults', 'default');
   $handler->override_option('filters', array(
     'type' => array(
