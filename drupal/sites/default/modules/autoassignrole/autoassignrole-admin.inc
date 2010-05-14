@@ -1,5 +1,5 @@
 <?php
-// $Id: autoassignrole-admin.inc,v 1.1.2.15 2009/09/23 13:55:01 cyberswat Exp $
+// $Id: autoassignrole-admin.inc,v 1.1.2.18 2010/05/11 14:24:21 cyberswat Exp $
 
 /**
  * @file
@@ -11,6 +11,7 @@
  */
 
 function autoassignrole_admin_form() {
+
   $form['autoassignrole_settings_auto'] = array(
     '#type' => 'fieldset',
     '#title' => t('Automatic Role Assignment'),
@@ -106,7 +107,7 @@ function autoassignrole_admin_form() {
     $form['autoassignrole_settings_page'][$k]["path_registration_$k"] = array(
       '#type' => 'radios',
       '#title' => t('Default Registration Page'),
-      '#default_value' => ($defaults[$k]['registration'] ? 1 : 0),
+      '#default_value' => (isset($defaults[$k]['registration']) ? 1 : 0),
       '#description' => t('Should this path replace the default user/register path?'),
       '#options' => array(1 => t('Yes'), 0 => t('No')),
     );
@@ -120,7 +121,7 @@ function autoassignrole_admin_form() {
   $form['autoassignrole_settings_page'][$k]["path_menu_$k"] = array(
     '#type' => 'select',
     '#title' => t('Menu'),
-    '#default_value' => $defaults[$k]['menu'],
+    '#default_value' => (isset($defaults[$k]['menu']) ? $defaults[$k]['menu'] : ''),
     '#description' => t('If this path is going to be displayed as a menu item which parent menu should it appear under?  This setting will be ignored for all Display Methods except Menu Items.'),
     '#options' => menu_get_menus(),
   );
@@ -355,7 +356,9 @@ function autoassignrole_admin_form_submit($form_id, &$form_state) {
   db_query($sql, $form_state['values']['user_selection'], 'user_selection');
   db_query($sql, $form_state['values']['auto_admin_active'], 'auto_admin_active');
   preg_match('/\[nid:(\d+)\]/', $form_state['values']['node_user_register'], $matches);
-  db_query($sql, $matches[1], 'node_user_register');
+  if (isset($matches[1])) {
+    db_query($sql, $matches[1], 'node_user_register');
+  }
   
 
 
@@ -388,7 +391,8 @@ function autoassignrole_admin_form_submit($form_id, &$form_state) {
 function autoassignrole_autocomplete_node($string = '') {
   $matches = array();
   if ($string) {
-    $result = db_query_range("SELECT nid, title FROM {node} WHERE LOWER(title) LIKE LOWER('%s%%') OR nid = '%d'", $string, $string, 0, 10);
+    $sql = "SELECT nid, title FROM {node} WHERE status = 1 AND (LOWER(title) LIKE LOWER('%s%%') OR nid = '%d')";
+    $result = db_query_range(db_rewrite_sql($sql), $string, $string, 0, 10);
     while ($node= db_fetch_object($result)) {
     // Add a class wrapper for a few required CSS overrides.
       $matches[check_plain($node->title) ." [nid:$node->nid]"] = "<div class=\"reference-autocomplete\">". check_plain($node->title) ." [nid:$node->nid]</div>";
