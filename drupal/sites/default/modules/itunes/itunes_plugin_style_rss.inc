@@ -1,5 +1,5 @@
 <?php
-// $Id: itunes_plugin_style_rss.inc,v 1.4 2009/07/31 22:55:10 drewish Exp $
+// $Id: itunes_plugin_style_rss.inc,v 1.6 2010/05/06 17:39:24 drewish Exp $
 
 /**
  * @file
@@ -26,6 +26,7 @@ class itunes_plugin_style_rss extends views_plugin_style_rss {
     $options['owner_email'] = array('default' => '', 'translatable' => FALSE);
     $options['categories'] = array('default' => array('', '', ''), 'translatable' => FALSE);
     $options['keywords'] = array('default' => '', 'translatable' => TRUE);
+    $options['new_feed_url'] = array('default' => '', 'translatable' => FALSE);
 
     return $options;
   }
@@ -66,6 +67,13 @@ class itunes_plugin_style_rss extends views_plugin_style_rss {
       '#default_value' => $this->options['image_url'],
       '#maxlength' => 255,
       '#description' => t('This specifies the artwork for your podcast. iTunes prefers square .jpg images that are at least 300 x 300 pixels, which is different than what is specified for the standard RSS image tag. iTunes supports images in JPEG and PNG formats. The URL must end in ".jpg" or ".png". If you change your podcast’s image, also change the file’s name. iTunes may not change the image if it checks your feed and the image URL is the same.'),
+    );
+    $form['new_feed_url'] = array(
+      '#type' => 'textfield',
+      '#title' => t('New Feed URL'),
+      '#default_value' => $this->options['new_feed_url'],
+      '#maxlength' => 255,
+      '#description' => t('Podcasters occasionally need to move their feed from one location to another. To do so without losing subscribers, you must convey the change directly to all users who are subscribed to your feed. Specify the <a href="http://www.apple.com/itunes/podcasts/specs.html#changing">new feed url tag</a> here if desired.'),
     );
     $form['explicit'] = array(
       '#type' => 'select', '#title' => t('Explicit'),
@@ -171,6 +179,12 @@ class itunes_plugin_style_rss extends views_plugin_style_rss {
       'key' => 'itunes:explicit',
       'value' => itunes_explicit($this->options['explicit']),
     );
+    if ($this->options['copyright']) {
+      $extra[] = array(
+        'key' => 'copyright',
+        'value' => $this->options['copyright'],
+      );
+    }
     if ($this->options['author']) {
       $extra[] = array(
         'key' => 'itunes:author',
@@ -182,6 +196,12 @@ class itunes_plugin_style_rss extends views_plugin_style_rss {
         'key' => 'itunes:image',
         'attributes' => array('href' => $this->options['image_url']),
         'value' => NULL,
+      );
+    }
+    if ($this->options['new_feed_url']) {
+      $extra[] = array(
+        'key' => 'itunes:new-feed-url',
+        'value' => $this->options['new_feed_url'],
       );
     }
     if ($this->options['subtitle']) {

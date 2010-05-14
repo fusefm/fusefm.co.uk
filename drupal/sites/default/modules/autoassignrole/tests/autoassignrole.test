@@ -1,5 +1,5 @@
 <?php
-// $Id: autoassignrole.test,v 1.1.2.8 2009/08/19 18:28:34 cyberswat Exp $
+// $Id: autoassignrole.test,v 1.1.2.9 2010/05/11 14:24:21 cyberswat Exp $
 
 /**
  * @file
@@ -19,8 +19,9 @@ class AAR extends DrupalWebTestCase {
   function createRoles($count) {
     $roles = array();
     $x = 0;
+    $permissions = array('administer autoassignrole', 'access comments', 'access content', 'post comments', 'post comments without approval');
     while ($x < $count) {
-     $role = db_fetch_object(db_query("SELECT * FROM {role} WHERE rid = '%d'", $this->_drupalCreateRole()));
+     $role = db_fetch_object(db_query("SELECT * FROM {role} WHERE rid = '%d'", $this->drupalCreateRole($permissions)));
      $roles[$role->rid] = $role->name;
      $x++;
     }
@@ -262,6 +263,7 @@ class AutoassignroleAdminAllowUserChoiceTestCase extends AAR {
 
     // Check that the user can see the admin settings page.
     $this->drupalGet('admin/user/autoassignrole');
+    
     $this->assertRaw('Automatic Role Assignment', 'The Automatic Role Assignment section exists on the AAR admin page');
     
     $edit = $this->getEditValues('user_choice');
