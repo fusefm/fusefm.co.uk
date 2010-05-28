@@ -1,5 +1,5 @@
 <?php
-// $Id: getsatisfaction.module,v 1.5 2009/11/06 11:39:44 flevour Exp $
+// $Id: getsatisfaction.module,v 1.6 2010/05/27 13:29:42 flevour Exp $
 
 /**
  * @file
@@ -42,7 +42,7 @@ function getsatisfaction_menu() {
 /**
  * Implementation of hook_footer() to insert Javascript at the end of the page.
  */
-function getsatisfaction_init() {
+function getsatisfaction_footer() {
   $company = check_plain(variable_get('getsatisfaction_name', ''));
   $type = check_plain(variable_get('getsatisfaction_type', 'idea'));
   $placement = check_plain(variable_get('getsatisfaction_placement', 'left'));
@@ -53,15 +53,17 @@ function getsatisfaction_init() {
     $script .= 'var asset_host = is_ssl ? "https://s3.amazonaws.com/getsatisfaction.com/" : "http://s3.amazonaws.com/getsatisfaction.com/";';
     $script .= 'document.write(unescape("%3Cscript src=\'" + asset_host + "javascripts/feedback-v2.js\' type=\'text/javascript\'%3E%3C/script%3E"));';
     drupal_add_js($script, 'inline');
-    
-    $script = '';
-    $script .= 'var feedback_widget_options = {};';
-    $script .= 'feedback_widget_options.display = "overlay";';
-    $script .= 'feedback_widget_options.company = "' . $company . '";';
-    $script .= 'feedback_widget_options.placement = "'. $placement .'";';
-    $script .= 'feedback_widget_options.color = "' . $color . '";';
-    $script .= 'feedback_widget_options.style = "' . $type . '";';
-    $script .= 'var feedback_widget = new GSFN.feedback_widget(feedback_widget_options);';
+    $script  = "var \$body = $('body');";
+    $script .= "if(!\$body.hasClass('getsatisfaction-processed')) {";
+    $script .= '  $body.addClass("getsatisfaction-processed");';
+    $script .= '  var feedback_widget_options = {};';
+    $script .= '  feedback_widget_options.display = "overlay";';
+    $script .= '  feedback_widget_options.company = "' . $company . '";';
+    $script .= '  feedback_widget_options.placement = "'. $placement .'";';
+    $script .= '  feedback_widget_options.color = "' . $color . '";';
+    $script .= '  feedback_widget_options.style = "' . $type . '";';
+    $script .= '  var feedback_widget = new GSFN.feedback_widget(feedback_widget_options);';
+    $script .= '}';
     
     drupal_add_js($script, 'inline', 'footer');
   }
