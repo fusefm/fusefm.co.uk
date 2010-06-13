@@ -1,5 +1,5 @@
 <?php
-// $Id: pathologic.module,v 1.7.2.9.2.5 2010/05/08 21:57:03 garrettalbright Exp $
+// $Id: pathologic.module,v 1.7.2.9.2.8 2010/06/05 23:11:54 garrettalbright Exp $
 
 /**
  * @file
@@ -75,14 +75,15 @@ function _pathologic($text, $format) {
 
     $statics[$format] = array(
       // The pattern is gonna look like:
-      // ~(href|src|HREF|SRC)="(
-      //   (
-      //     (internal:|https?://example\.com|https?://example\.org)(/?(index\.php)?(\?q=)?)|
-      //     (?!([#/]|mailto:|.*:/))(internal:|\?q=)?
-      //   )
+      // ~(href|src|HREF|SRC)="
+      // (internal:|https?://example\.com|https?://example\.org)?
+      // (
+      //   /(#.*)?|
+      //   (?!(#|/|mailto:|[a-z]+:/))
+      //   ((index\.php)?(\?q=)?)
       //   ([^"]*)
-      // )~
-      'pattern' => '~(href|src|HREF|SRC)="(?!#)(((internal:|' . implode('|', $paths) . ')(/?(index.php)?(\?q=)?)|(?!([#/]|mailto:|.*:/))(\?q=)?)([^"]*))~',
+      // )"~
+      'pattern' => '~(href|src|HREF|SRC)="(internal:|' . implode('|', $paths) . ')?(/(#.*)?|(?!(#|/|mailto:|[a-z]+:/))((index\.php)?(\?q=)?)([^"]*))"~',
       // create_funtion() lets us do lambdas in a really crappy but pre-PHP 5.3-
       // compatible way. We're using it here so we can pass the value of
       // $filter->settings['absolute'] to the replacement function. We could
@@ -99,20 +100,16 @@ function _pathologic($text, $format) {
  */
 function _pathologic_replace($matches, $absolute) {
   // Build the full URL, then take it apart
-  global $base_url;
-  if ($matches[9] === '?q=' || $matches[6] === 'index.php') {
-    // This will be the case if the link tag was like:
-    // <a href="?q=foo">
-    $matches[10] = '?q=' . $matches[10];
+  $parts = parse_url('http://example.com/' . $matches[3]);
+  if ($parts['path'] === '/' | $parts['path'] === '//') {
+    // '//' will be the case if the original path was just a slash
+    $parts['path'] = '<front>';
   }
-  $full = $base_url . '/' . $matches[10];
-  // …then take it apart
-  $parts = parse_url($full);
-  // Trim initial slash off path. Note that substr() will return FALSE here if
-  // the path is just one character (just '/'), but url() seems to be okay with
-  // that.
-  $parts['path'] = substr($parts['path'], 1);
-
+  else {
+    // Trim initial slash off path.
+    $parts['path'] = drupal_substr($parts['path'], 1);
+  }
+  
   // Need to parse the query parts
   if (isset($parts['query'])) {
     parse_str($parts['query'], $qparts);
@@ -124,8 +121,9 @@ function _pathologic_replace($matches, $absolute) {
   else {
     $qparts = array();
   }
-  return $matches[1] . '="' . url($parts['path'], array('query' => $qparts, 'fragment' => isset($parts['fragment']) ? $parts['fragment'] : NULL, 'absolute' => $absolute));
+  return $matches[1] . '="' . url($parts['path'], array('query' => $qparts, 'fragment' => isset($parts['fragment']) ? $parts['fragment'] : NULL, 'absolute' => $absolute)) . '"';
 }
+
 
 /**
  * Escape paths to convert. preg_replace_callback() callback.
