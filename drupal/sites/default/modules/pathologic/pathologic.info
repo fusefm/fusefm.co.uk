@@ -3,9 +3,9 @@ description = Helps avoid broken links and incorrect paths in content.
 package = "Input filters"
 dependencies[] = filter
 core = 6.x
-; Information added by drupal.org packaging script on 2010-06-12
-version = "6.x-3.1"
+; Information added by drupal.org packaging script on 2010-06-23
+version = "6.x-3.2"
 core = "6.x"
 project = "pathologic"
-datestamp = "1276377007"
+datestamp = "1277261108"
 

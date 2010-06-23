@@ -1,5 +1,5 @@
 <?php
-// $Id: pathologic.module,v 1.7.2.9.2.8 2010/06/05 23:11:54 garrettalbright Exp $
+// $Id: pathologic.module,v 1.7.2.9.2.9 2010/06/17 01:43:31 garrettalbright Exp $
 
 /**
  * @file
@@ -100,7 +100,7 @@ function _pathologic($text, $format) {
  */
 function _pathologic_replace($matches, $absolute) {
   // Build the full URL, then take it apart
-  $parts = parse_url('http://example.com/' . $matches[3]);
+  $parts = parse_url('http://example.com/' . urldecode($matches[3]));
   if ($parts['path'] === '/' | $parts['path'] === '//') {
     // '//' will be the case if the original path was just a slash
     $parts['path'] = '<front>';
