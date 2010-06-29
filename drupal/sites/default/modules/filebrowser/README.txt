@@ -17,8 +17,7 @@ This module offers the following features:
  - File icons. This module includes part of the Tango Icon Library for use as file
    icons. Many common file types are supported by default. To extend the icons you
    may alter those in the "modules/filebrowser/icons" directory or override those
-   with your own in an "icons" directory in your theme. The file naming convention
-   is fb-FILETYPE-icon.png e.g. a PHP file would need a "fb-PHP-icon.png" icon.
+   with your own in an "filebrowser" directory in your theme.
  - descript.ion, file.bbs: Files used for adding description text to file listings.
    The format for descript.ion and file.bbs is the same and there is an example in
    this directory. Filename (optionally within quotes) followed by any amount of
