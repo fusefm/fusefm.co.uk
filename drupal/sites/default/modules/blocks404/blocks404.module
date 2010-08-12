@@ -1,5 +1,5 @@
 <?php
-// $Id: blocks404.module,v 1.5 2010/03/25 18:43:43 johnalbin Exp $
+// $Id: blocks404.module,v 1.6 2010/07/15 11:13:08 johnalbin Exp $
 
 define('BLOCKS404_PAGE', 'blocks404');
 
@@ -35,7 +35,9 @@ function blocks404_theme_registry_alter(&$theme_registry) {
  * Renders the left and right regions on 404 pages.
  */
 function blocks404_preprocess_show_blocks(&$vars, $hook) {
-  if (strpos(drupal_get_headers(), 'HTTP/1.1 404 Not Found') !== FALSE) {
+  // Drupal core sets a "HTTP/1.1 404 Not Found" header, but Pressflow only sets
+  // a "404 Not Found" header.
+  if (strpos(drupal_get_headers(), '404 Not Found') !== FALSE) {
     // Show all regions.
     $vars['show_blocks'] = TRUE;
   }
