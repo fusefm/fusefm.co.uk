@@ -1,5 +1,5 @@
 <?php
-// $Id: itunes.module,v 1.10 2009/07/31 23:45:51 drewish Exp $
+// $Id: itunes.module,v 1.12 2010/05/25 15:30:57 drewish Exp $
 
 define('ITUNES_EXPLICIT_YES', 1);
 define('ITUNES_EXPLICIT_CLEAN', 2);
@@ -43,6 +43,7 @@ function itunes_theme() {
 function itunes_views_api() {
   return array(
     'api' => 2,
+    'path' => drupal_get_path('module', 'itunes') . '/views',
   );
 }
 
@@ -160,23 +161,57 @@ function itunes_nodeapi(&$node, $op, $arg) {
 
         // File enclosure.
         $fields = variable_get('itunes_enclosure_source', array());
-        if (!empty($fields[$node->type]) && !empty($node->{$fields[$node->type]}[0]['fid'])) {
-          $file = (array) $node->{$fields[$node->type]}[0];
-          $ret[] = array(
-            'key' => 'enclosure',
-            'value' => '',
-            'attributes' => array(
-              'url' => file_create_url($file['filepath']),
-              'length' => $file['filesize'],
-              'type' => $file['filemime'],
-            )
-          );
-          if (!empty($file['data']['duration'])) {
-            $ret[] = array(
-              'namespace' => array('xmlns:itunes' => 'http://www.itunes.com/dtds/podcast-1.0.dtd'),
-              'key' => 'itunes:duration',
-              'value' => (int) $file['data']['duration'],
-            );
+        if (!empty($fields[$node->type])) {
+          // This variable won't be set unless content.module is enabled.
+          $content_types = content_types();
+          $content = $content_types[$node->type];
+          foreach ($content['fields'] as $field_name => $field) {
+            if ($fields[$node->type] == $field_name) {
+              $enclosure_field = $field;
+              break;
+            }
+          }
+          if ($field['type'] == 'filefield') {
+            if (!empty($node->{$fields[$node->type]}[0]['fid'])) {
+              $file = (array) $node->{$fields[$node->type]}[0];
+              $ret[] = array(
+                'key' => 'enclosure',
+                'value' => '',
+                'attributes' => array(
+                  'url' => file_create_url($file['filepath']),
+                  'length' => $file['filesize'],
+                  'type' => $file['filemime'],
+                ),
+              );
+              if (!empty($file['data']['duration'])) {
+                $ret[] = array(
+                  'namespace' => array('xmlns:itunes' => 'http://www.itunes.com/dtds/podcast-1.0.dtd'),
+                  'key' => 'itunes:duration',
+                  'value' => (int) $file['data']['duration'],
+                );
+              }
+            }
+          }
+          elseif ($field['type'] == 'emaudio') {
+            if (!empty($node->{$fields[$node->type]}[0]['value'])) {
+              $file = $node->{$fields[$node->type]}[0];
+              $ret[] = array(
+                'key' => 'enclosure',
+                'value' => '',
+                'attributes' => array(
+                  'url' => $file['value'],
+                  'length' => !empty($file['data']['size']) ? $file['data']['size'] : 0,
+                  'type' => !empty($file['data']['mime']) ? $file['data']['mime'] : 'audio/mpeg',
+                ),
+              );
+              if (!empty($file['data']['duration'])) {
+                $ret[] = array(
+                  'namespace' => array('xmlns:itunes' => 'http://www.itunes.com/dtds/podcast-1.0.dtd'),
+                  'key' => 'itunes:duration',
+                  'value' => (int) $file['data']['duration'],
+                );
+              }
+            }
           }
         }
 

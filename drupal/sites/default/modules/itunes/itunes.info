@@ -5,9 +5,9 @@ core = 6.x
 dependencies[] = views
 dependencies[] = views_ui
 
-; Information added by drupal.org packaging script on 2010-05-06
-version = "6.x-1.5"
+; Information added by drupal.org packaging script on 2010-07-16
+version = "6.x-1.6"
 core = "6.x"
 project = "itunes"
-datestamp = "1273167907"
+datestamp = "1279279213"
 

@@ -1,5 +1,5 @@
 <?php
-// $Id: itunes.views_default.inc,v 1.4 2009/08/01 16:20:08 drewish Exp $
+// $Id: itunes.views_default.inc,v 1.1 2010/05/20 22:55:48 drewish Exp $
 
 /**
  * @file
@@ -46,6 +46,9 @@ function itunes_views_default_views() {
   $handler->override_option('access', array(
     'type' => 'none',
   ));
+  $handler->override_option('cache', array(
+    'type' => 'none',
+  ));
   $handler->override_option('row_plugin', 'node');
   $handler->override_option('row_options', array(
     'teaser' => 1,
@@ -89,6 +92,7 @@ function itunes_views_default_views() {
     'title' => '',
     'description' => '',
     'weight' => 0,
+    'name' => 'navigation',
   ));
   $handler->override_option('displays', array(
     'default' => 'default',
@@ -110,8 +114,11 @@ function itunes_views_default_views() {
     'title' => '',
     'description' => '',
     'weight' => 0,
+    'name' => 'navigation',
   ));
   $views[$view->name] = $view;
 
   return $views;
 }
+
+
