@@ -1,5 +1,5 @@
 <?php
-// $Id: getsatisfaction.module,v 1.6 2010/05/27 13:29:42 flevour Exp $
+// $Id: getsatisfaction.module,v 1.8 2010/07/24 13:52:48 flevour Exp $
 
 /**
  * @file
@@ -40,30 +40,37 @@ function getsatisfaction_menu() {
 }
 
 /**
+ * Implementation of hook_init().
+ * 
+ * It is necessary to call drupal_add_js() at least once before hook_footer to trigger inclusion of jQuery libs. It also makes
+ * code cleaner than including GetSatisfaction original code.
+ */
+function getsatisfaction_init() {
+  $conf = array();
+  $conf['display']   = "overlay";
+  $conf['company']   = check_plain(variable_get('getsatisfaction_name', ''));
+  $conf['placement'] = check_plain(variable_get('getsatisfaction_placement', 'left'));
+  $conf['color']     = check_plain(variable_get('getsatisfaction_color', '#222'));
+  $conf['style']     = check_plain(variable_get('getsatisfaction_type', 'idea'));
+  drupal_add_js(array('getsatisfaction' => $conf), 'setting');
+}
+
+/**
  * Implementation of hook_footer() to insert Javascript at the end of the page.
  */
 function getsatisfaction_footer() {
   $company = check_plain(variable_get('getsatisfaction_name', ''));
-  $type = check_plain(variable_get('getsatisfaction_type', 'idea'));
-  $placement = check_plain(variable_get('getsatisfaction_placement', 'left'));
-  $color = check_plain(variable_get('getsatisfaction_color', '#222'));
-
   if (!empty($company) && _getsatisfaction_visibility_pages()) {
-    $script .= 'var is_ssl = ("https:" == document.location.protocol);';
+    $script  = 'var is_ssl = ("https:" == document.location.protocol);';
     $script .= 'var asset_host = is_ssl ? "https://s3.amazonaws.com/getsatisfaction.com/" : "http://s3.amazonaws.com/getsatisfaction.com/";';
     $script .= 'document.write(unescape("%3Cscript src=\'" + asset_host + "javascripts/feedback-v2.js\' type=\'text/javascript\'%3E%3C/script%3E"));';
-    drupal_add_js($script, 'inline');
-    $script  = "var \$body = $('body');";
-    $script .= "if(!\$body.hasClass('getsatisfaction-processed')) {";
-    $script .= '  $body.addClass("getsatisfaction-processed");';
-    $script .= '  var feedback_widget_options = {};';
-    $script .= '  feedback_widget_options.display = "overlay";';
-    $script .= '  feedback_widget_options.company = "' . $company . '";';
-    $script .= '  feedback_widget_options.placement = "'. $placement .'";';
-    $script .= '  feedback_widget_options.color = "' . $color . '";';
-    $script .= '  feedback_widget_options.style = "' . $type . '";';
-    $script .= '  var feedback_widget = new GSFN.feedback_widget(feedback_widget_options);';
-    $script .= '}';
+    drupal_add_js($script, 'inline', 'footer'); // Need to make 2 script tags in order to have the library loaded when the second is executed.
+    
+    $script  = '';
+    $script .= '$("body:not(.getsatisfaction-processed)").each(function() {';
+    $script .= '  $(this).addClass("getsatisfaction-processed");';
+    $script .= '  var feedback_widget = new GSFN.feedback_widget(Drupal.settings.getsatisfaction);';
+    $script .= '});';
     
     drupal_add_js($script, 'inline', 'footer');
   }
