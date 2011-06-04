@@ -1,5 +1,5 @@
 <?php
-// $Id: station_catalog.module,v 1.36 2009/08/29 08:01:42 drewish Exp $
+// $Id: station_catalog.module,v 1.37 2010/06/27 18:33:04 drewish Exp $
 
 /**
  * Implementation of hook_help().
@@ -117,8 +117,7 @@ function station_catalog_album_form($node) {
   $form['album']['number'] = array(
     '#type' => 'textfield',
     '#title' => t('Number'),
-    '#default_value' => isset($node->album['number']) ? $node->album['number'] : station_catalog_album_next_number(),
-    '#required' => TRUE,
+    '#default_value' => isset($node->album['number']) ? $node->album['number'] : '',
     '#description' => t("The album's log number must be numeric and unique."),
   );
   $form['album']['artist'] = array(
@@ -187,20 +186,22 @@ function station_catalog_album_form($node) {
  * Implementation of hook_validate().
  */
 function station_catalog_album_validate(&$node, &$form) {
-  if (!is_numeric($node->album['number'])) {
-    form_set_error('album][number', t('Album number must be a numeric value.'));
-  }
-  elseif ($node->album['number']) {
-    // look for duplicate numbers
-    if ($node->nid) {
-      $query = db_query('SELECT sc.nid, n.title FROM {station_catalog} sc INNER JOIN {node} n ON sc.nid = n.nid WHERE sc.number = %d AND sc.nid <> %d', $node->album['number'], $node->nid);
+  if ($node->album['number'] != '') {
+    if (!is_numeric($node->album['number'])) {
+      form_set_error('album][number', t('Album number must be a numeric value.'));
     }
-    else {
-      $query = db_query('SELECT sc.nid, n.title FROM {station_catalog} sc INNER JOIN {node} n ON sc.nid = n.nid WHERE sc.number = %d', $node->album['number']);
-    }
-    if ($other_node = db_fetch_object($query)) {
-      form_set_error('album][number', t('Another album <a href="@link">%title</a> already has this number.', array('@link' => url('node/'. $other_node->nid), '%title' => $other_node->title))
-      );
+    elseif ($node->album['number']) {
+      // look for duplicate numbers
+      if ($node->nid) {
+        $query = db_query('SELECT sc.nid, n.title FROM {station_catalog} sc INNER JOIN {node} n ON sc.nid = n.nid WHERE sc.number = %d AND sc.nid <> %d', $node->album['number'], $node->nid);
+      }
+      else {
+        $query = db_query('SELECT sc.nid, n.title FROM {station_catalog} sc INNER JOIN {node} n ON sc.nid = n.nid WHERE sc.number = %d', $node->album['number']);
+      }
+      if ($other_node = db_fetch_object($query)) {
+        form_set_error('album][number', t('Another album <a href="@link">%title</a> already has this number.', array('@link' => url('node/'. $other_node->nid), '%title' => $other_node->title))
+        );
+      }
     }
   }
 
@@ -215,6 +216,7 @@ function station_catalog_album_validate(&$node, &$form) {
 function station_catalog_album_node_form_submit($form, &$form_state) {
   // Compute the title.
   $form_state['values']['title'] = $form_state['values']['album']['artist'] .' - '. $form_state['values']['album']['album'];
+  $form_state['values']['album']['number'] = ($form_state['values']['album']['number'] != '') ? $form_state['values']['album']['number'] : station_catalog_album_next_number();
 }
 
 /**

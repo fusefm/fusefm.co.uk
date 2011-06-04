@@ -1,5 +1,5 @@
 <?php
-// $Id: itunes_plugin_style_rss.inc,v 1.1 2010/05/20 22:55:48 drewish Exp $
+// $Id: itunes_plugin_style_rss.inc,v 1.2 2010/09/13 19:00:31 drewish Exp $
 
 /**
  * @file
@@ -171,6 +171,19 @@ class itunes_plugin_style_rss extends views_plugin_style_rss {
 
   function get_channel_elements() {
     $extra = parent::get_channel_elements();
+
+    // Try to add an atom self link to make feed validators happy.
+    if ($path = $this->display->handler->get_path()) {
+      $extra[] = array(
+        'namespace' => array('xmlns:atom' => 'http://www.w3.org/2005/Atom'),
+        'key' => 'atom:link',
+        'attributes' => array(
+          'href' => url($path, array('absolute' => TRUE)),
+          'rel' => 'self',
+          'type' => 'application/rss+xml',
+        ),
+      );
+    }
 
     // Specify the namespace in this element because it is always included so
     // we can omit it from subsequent elements.

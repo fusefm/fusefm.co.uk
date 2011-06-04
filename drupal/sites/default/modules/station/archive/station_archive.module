@@ -1,5 +1,5 @@
 <?php
-// $Id: station_archive.module,v 1.49 2009/12/14 06:31:30 drewish Exp $
+// $Id: station_archive.module,v 1.51 2010/09/13 18:54:05 timplunkett Exp $
 
 /**
  * Implementation of hook_help().
@@ -147,10 +147,10 @@ function station_archive_nodeapi(&$node, $op, $teaser, $page) {
         // If it's in the archives, set the menu appropriately
         if ($page && !$teaser && isset($node->station_archive)) {
           $breadcrumb = array(
-             l(t('Home'), NULL),
-             l(t('Station'), 'station'),
-             l(t('Archives'), 'station/archives'),
-             l($node->station_archive['program_title'], 'station/archives/'. $node->station_archive['program_nid']),
+            l(t('Home'), NULL),
+            l(t('Station'), 'station'),
+            l(t('Archives'), 'station/archives'),
+            l($node->station_archive['program_title'], 'station/archives/'. $node->station_archive['program_nid']),
           );
           drupal_set_breadcrumb($breadcrumb);
 
@@ -441,7 +441,7 @@ function _station_archive_update_program_list() {
     }
     $programs = xmlrpc(check_url($url .'/xmlrpc.php'), 'station.program.get.list');
     if (xmlrpc_errno()) {
-      watchdog('station_archive', t('Failed to load program listing remotely. Error %code : %message', array('%code' => xmlrpc_errno(), '%message' => xmlrpc_error_msg())), WATCHDOG_ERROR);
+      watchdog('station_archive', 'Failed to load program listing remotely. Error %code : %message', array('%code' => xmlrpc_errno(), '%message' => xmlrpc_error_msg()), WATCHDOG_ERROR);
       return FALSE;
     }
   }
@@ -565,7 +565,7 @@ function _station_archive_add_file($file) {
  * @return
  *   Array with day and hour term ids.
  *
- * @see station_local_ts().
+ * @see station_local_ts()
  */
 function _station_archive_get_taxonomy($local_timestamp) {
   $vid = _station_archive_get_vid();

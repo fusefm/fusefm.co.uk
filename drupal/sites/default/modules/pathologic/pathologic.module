@@ -1,5 +1,5 @@
 <?php
-// $Id: pathologic.module,v 1.7.2.9.2.9 2010/06/17 01:43:31 garrettalbright Exp $
+// $Id: pathologic.module,v 1.7.2.9.2.11 2010/12/05 21:01:04 garrettalbright Exp $
 
 /**
  * @file
@@ -101,7 +101,7 @@ function _pathologic($text, $format) {
 function _pathologic_replace($matches, $absolute) {
   // Build the full URL, then take it apart
   $parts = parse_url('http://example.com/' . urldecode($matches[3]));
-  if ($parts['path'] === '/' | $parts['path'] === '//') {
+  if ($parts['path'] === '/' || $parts['path'] === '//') {
     // '//' will be the case if the original path was just a slash
     $parts['path'] = '<front>';
   }
@@ -109,7 +109,7 @@ function _pathologic_replace($matches, $absolute) {
     // Trim initial slash off path.
     $parts['path'] = drupal_substr($parts['path'], 1);
   }
-  
+
   // Need to parse the query parts
   if (isset($parts['query'])) {
     parse_str($parts['query'], $qparts);
@@ -121,7 +121,42 @@ function _pathologic_replace($matches, $absolute) {
   else {
     $qparts = array();
   }
-  return $matches[1] . '="' . url($parts['path'], array('query' => $qparts, 'fragment' => isset($parts['fragment']) ? $parts['fragment'] : NULL, 'absolute' => $absolute)) . '"';
+  
+  // Check if this is a menu item. If yes, we want to try to translate the path.
+  if (menu_get_item($parts['path'])) {
+    global $language;
+  }
+  else {
+    $language = NULL;
+    // On multi-lingual sites, language_url_rewrite() will be called and may
+    // rewrite the link in ways we don't want:
+    // http://drupal.org/node/961618
+    // So here's a stupid workaround to detect if that's probably about to
+    // happen and temporarily override a variable to stop that.
+    $orig_lang_neg = variable_get('language_negotiation', LANGUAGE_NEGOTIATION_NONE);
+    if ($orig_lang_neg !== LANGUAGE_NEGOTIATION_NONE) {
+      global $conf;
+      $conf['language_negotiation'] = LANGUAGE_NEGOTIATION_NONE;
+    }
+  }
+
+  $url = url(
+    $parts['path'],
+    array(
+      'query' => $qparts,
+      'fragment' => isset($parts['fragment']) ? $parts['fragment'] : NULL,
+      'absolute' => $absolute,
+      'language' => $language,
+    )
+  );
+
+  // Reset the language_negotiation variable if necessary.
+  if (isset($conf)) {
+    $conf['language_negotiation'] = $orig_lang_neg;
+  }
+
+  // $matches[1] will be "src" or "href"
+  return "{$matches[1]}=\"{$url}\"";
 }
 
 

@@ -1,5 +1,5 @@
 <?php
-// $Id: node_privacy_byrole.module,v 1.32.2.9 2009/02/13 23:14:39 cyu Exp $
+// $Id: node_privacy_byrole.module,v 1.32.2.12 2011/01/24 18:48:14 deekayen Exp $
 
 /**
  * @file
@@ -22,6 +22,16 @@ function node_privacy_byrole_help($path, $arg) {
       $output .= '<p>'. t('For more information please read the configuration and customization handbook <a href="@node_privacy_byrole">Node privacy by role page</a>.', array('@node_privacy_byrole' => 'http://www.drupal.org/handbook/modules/node_privacy_byrole/')) .'</p>';
       return $output;
   }
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function node_privacy_byrole_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'node_privacy_byrole') .'/views',
+  );
 }
 
 /**
@@ -60,9 +70,9 @@ function node_privacy_byrole_node_access_records($node) {
   node_privacy_byrole_nodeapi_prepare($node);
 
   $grants = array();
-  $user_edit_perm = $node->node_privacy_byrole['author']['edit'] ? 1 : 0;
-  $user_delete_perm = $node->node_privacy_byrole['author']['delete'] ? 1 : 0;
-  $user_view_perm = (($user_edit_perm || $user_delete_perm) ? 1 : $node->node_privacy_byrole['author']['view']);
+  $user_edit_perm = empty($node->node_privacy_byrole['author']['edit']) ? 0 : 1;
+  $user_delete_perm = empty($node->node_privacy_byrole['author']['delete']) ? 0 : 1;
+  $user_view_perm = ($user_edit_perm || $user_delete_perm) ? 1 : (empty($node->node_privacy_byrole['author']['view']) ? 0 : 1);
   // permission for node owner
   if ($node->uid > 0) {
     $grants[] = array(
@@ -291,7 +301,7 @@ function node_privacy_byrole_node_type_form(&$form) {
     foreach (array_keys($roles) as $rid) {
       $form['npbr_workflow_settings'][$permname][$rid] = array(
         '#type' => 'checkbox',
-        '#title' => t($roles[$rid]),
+        '#title' => $roles[$rid],
         '#return_value' => 1,
         '#default_value' => in_array($rid, $default_perms),
       );

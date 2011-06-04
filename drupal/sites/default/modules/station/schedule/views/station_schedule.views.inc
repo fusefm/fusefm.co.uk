@@ -1,5 +1,5 @@
 <?php
-// $Id: station_schedule.views.inc,v 1.11 2009/09/22 23:47:56 drewish Exp $
+// $Id: station_schedule.views.inc,v 1.13 2010/09/13 18:54:05 timplunkett Exp $
 
 /**
  * Implementation of hook_views_handlers().
@@ -45,6 +45,9 @@ function station_schedule_views_handlers() {
         'parent' => 'views_handler_filter_numeric',
       ),
       'station_schedule_handler_filter_schedule_item' => array(
+        'parent' => 'views_handler_filter_boolean_operator',
+      ),
+      'station_schedule_handler_filter_schedule_selected' => array(
         'parent' => 'views_handler_filter_boolean_operator',
       ),
     ),
@@ -133,6 +136,17 @@ function station_schedule_views_data() {
     ),
     'sort' => array(
       'handler' => 'views_handler_sort',
+    ),
+  );
+  $data['station_schedule']['default_schedule'] = array(
+    'title' => t('Default Schedule'),
+    'help' => t("Only display the default schedule."),
+    'filter' => array(
+      'handler' => 'station_schedule_handler_filter_schedule_selected',
+      'title' => t('Default Schedule'),
+      'type' => 'yes-no',
+      'label' => t('Default Schedule'),
+      'help' => t('Only display the default schedule.'),
     ),
   );
 
@@ -274,7 +288,7 @@ function station_schedule_views_data_alter(&$data) {
     'group' => t('Station Schedule'),
     'title' => t('Scheduled Programs'),
     'help' => t('All programs on this schedule.'),
-    'real field' => 'nid',
+    'real field' => 'schedule_nid',
 //    'field' => array(
 //      'handler' => 'views_handler_field_upload_fid',
 //    ),
@@ -300,7 +314,7 @@ function station_schedule_views_data_alter(&$data) {
     'group' => t('Station Program'),
     'title' => t('Program Schedule Times'),
     'help' => t('All the times this program is scheduled.'),
-    'real field' => 'nid',
+    'real field' => 'program_nid',
 //    'field' => array(
 //      'handler' => 'views_handler_field_upload_fid',
 //    ),

@@ -9,9 +9,9 @@ dependencies[] = views
 dependencies[] = content
 dependencies[] = nodereference
 dependencies[] = date
-; Information added by drupal.org packaging script on 2010-01-12
-version = "6.x-2.0-beta3"
+; Information added by drupal.org packaging script on 2010-11-20
+version = "6.x-2.0-beta5"
 core = "6.x"
 project = "station"
-datestamp = "1263282005"
+datestamp = "1290218584"
 

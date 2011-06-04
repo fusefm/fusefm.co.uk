@@ -1,6 +1,6 @@
 <?php
 
-// $Id: dayhour.inc,v 1.22 2009/11/28 22:17:27 drewish Exp $
+// $Id: dayhour.inc,v 1.23 2010/11/18 05:23:38 timplunkett Exp $
 
 // There are 1440 minutes in a day (60minute * 24hours = 1day).
 define('MINUTES_IN_DAY', 1440);
@@ -199,6 +199,23 @@ function station_time_from_minute($minutes) {
     'minutes' => $minutes,
     'a' => $a,
   );
+}
+
+/**
+ * Format minutes into a day string, e.g. "Sunday".
+ *
+ * @param $time
+ *   Integer specifying minutes.
+ * @return
+ *   Formatted string.
+ */
+function theme_station_day($time) {
+  $day = station_day_from_minute($time);
+  $format_params = array(
+    '@day' => station_day_name($day),
+  );
+
+  return t('@day', $format_params);
 }
 
 /**

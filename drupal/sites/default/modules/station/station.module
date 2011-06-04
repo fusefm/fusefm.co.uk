@@ -1,5 +1,5 @@
 <?php
-// $Id: station.module,v 1.59 2009/11/28 22:06:44 drewish Exp $
+// $Id: station.module,v 1.60 2010/11/18 05:23:38 timplunkett Exp $
 
 require_once(drupal_get_path('module', 'station') .'/dayhour.inc');
 
@@ -55,6 +55,10 @@ function station_theme() {
     ),
     'station_hour_duration' => array(
       'arguments' => array('start' => NULL, 'finish' => NULL),
+      'file' => 'dayhour.inc',
+    ),
+    'station_day' => array(
+      'arguments' => array('time' => NULL),
       'file' => 'dayhour.inc',
     ),
     'station_dayhour' => array(

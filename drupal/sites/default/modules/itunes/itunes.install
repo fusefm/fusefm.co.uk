@@ -1,5 +1,5 @@
 <?php
-// $Id: itunes.install,v 1.6 2009/07/31 23:45:51 drewish Exp $
+// $Id: itunes.install,v 1.7 2010/07/16 12:38:37 drewish Exp $
 
 /**
  * @file
@@ -14,6 +14,20 @@ function itunes_install() {
   if (db_table_exists('audio_itunes_item')) {
     $ret = array();
     db_rename_table($ret, 'audio_itunes_item', 'itunes_item');
+
+    // Check if the audio module got around to adding a nid field.
+    if (!db_column_exists('itunes_item', 'nid')) {
+      $nid_field = array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      );
+      db_add_field($ret, 'itunes_item', 'nid', $nid_field);
+
+      // Assign nids from the node table.
+      $ret[] = update_sql("UPDATE {itunes_item} i INNER JOIN {node} n ON i.vid = n.vid SET i.nid = n.nid");
+    }
   }
   else {
     drupal_install_schema('itunes');

@@ -1,11 +1,11 @@
 <?php
-// $Id: station_schedule.pages.inc,v 1.8 2009/11/28 23:26:57 drewish Exp $
+// $Id: station_schedule.pages.inc,v 1.10 2010/09/13 18:54:05 timplunkett Exp $
 
 /**
  * Redirect the visitor to the schedule's current day view.
  */
 function station_schedule_goto_today($schedule) {
-  drupal_goto('node/'. $schedule->nid .'/view/'. strtolower(station_day_name(date('w'))));
+  drupal_goto('node/'. $schedule->nid .'/view/'. drupal_strtolower(station_day_name(date('w'))));
 }
 
 function theme_station_schedule_hour($hour) {
@@ -30,9 +30,10 @@ function theme_station_schedule_item($start, $finish, $program) {
   $class = 'station-sch-box station-sch-scheduled';
   $height = ($finish - $start);
   $link = url('node/'. $program->nid);
+  $time = theme('station_hour_range', $start, $finish);
 
-  $output = "<div class='{$class}'><a href='{$link}' style='height: {$height}px;'>";
-  $output .= '<span class="station-sch-time">'. theme('station_hour_range', $start, $finish) .'</span>';
+  $output = "<div class='{$class}'><a href='{$link}' style='height: {$height}px;' title='{$time}'>";
+  $output .= "<span class='station-sch-time'>{$time}</span>";
   $output .= '<span class="station-sch-title">'. check_plain($program->title) .'</span>';
   if (!empty($program->field_station_program_dj)) {
     $djs = array();
