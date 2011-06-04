@@ -1,5 +1,4 @@
 <?php
-// $Id: email.inc,v 1.28.2.4 2010/04/10 00:54:57 quicksketch Exp $
 
 /**
  * @file
@@ -7,7 +6,7 @@
  */
 
 /**
- * Implementation of _webform_defaults_component().
+ * Implements _webform_defaults_component().
  */
 function _webform_defaults_email() {
   return array(
@@ -17,11 +16,11 @@ function _webform_defaults_email() {
     'weight' => 0,
     'value' => '',
     'mandatory' => 0,
-    'email' => 1,
     'extra' => array(
       'width' => '',
       'unique' => 0,
       'disabled' => 0,
+      'title_display' => 0,
       'description' => '',
       'attributes' => array(),
     ),
@@ -29,7 +28,7 @@ function _webform_defaults_email() {
 }
 
 /**
- * Implementation of _webform_theme_component().
+ * Implements _webform_theme_component().
  */
 function _webform_theme_email() {
   return array(
@@ -40,7 +39,7 @@ function _webform_theme_email() {
 }
 
 /**
- * Implementation of _webform_edit_component().
+ * Implements _webform_edit_component().
  */
 function _webform_edit_email($component) {
   $form['value'] = array(
@@ -77,7 +76,7 @@ function _webform_edit_email($component) {
     '#title' => t('Disabled'),
     '#return_value' => 1,
     '#description' => t('Make this field non-editable. Useful for setting an unchangeable default value.'),
-    '#weight' => 3,
+    '#weight' => 11,
     '#default_value' => $component['extra']['disabled'],
     '#parents' => array('extra', 'disabled'),
   );
@@ -103,21 +102,23 @@ function _webform_edit_email_validate($element, &$form_state) {
 }
 
 /**
- * Implementation of _webform_render_component().
+ * Implements _webform_render_component().
  */
-function _webform_render_email($component, $value = NULL) {
+function _webform_render_email($component, $value = NULL, $filter = TRUE) {
   global $user;
   $element = array(
-    '#type'          => 'textfield',
-    '#title'         => $component['name'],
+    '#type' => 'textfield',
+    '#title' => $filter ? _webform_filter_xss($component['name']) : $component['name'],
+    '#title_display' => $component['extra']['title_display'] ? $component['extra']['title_display'] : 'before',
     '#default_value' => _webform_filter_values($component['value']),
-    '#required'      => $component['mandatory'],
-    '#weight'        => $component['weight'],
-    '#description'   => _webform_filter_descriptions($component['extra']['description']),
-    '#attributes'    => $component['extra']['attributes'],
-    '#prefix'        => '<div class="webform-component webform-component-' . $component['type'] . '" id="webform-component-' . $component['form_key'] . '">',
-    '#suffix'        => '</div>',
+    '#required' => $component['mandatory'],
+    '#weight' => $component['weight'],
+    '#description' => $filter ? _webform_filter_descriptions($component['extra']['description']) : $component['extra']['description'],
+    '#attributes' => $component['extra']['attributes'],
     '#element_validate'  => array('_webform_validate_email'),
+    '#theme_wrappers' => array('webform_element_wrapper'),
+    '#pre_render' => array('webform_element_title_display'),
+    '#post_render' => array('webform_element_wrapper'),
     '#webform_component' => $component,
   );
 
@@ -168,18 +169,18 @@ function _webform_validate_email($form_element, &$form_state) {
 }
 
 /**
- * Implementation of _webform_display_component().
+ * Implements _webform_display_component().
  */
 function _webform_display_email($component, $value, $format = 'html') {
   return array(
     '#title' => $component['name'],
     '#weight' => $component['weight'],
     '#theme' => 'webform_display_email',
-    '#theme_wrappers' => $format == 'html' ? array('webform_element') : array('webform_element_text'),
+    '#theme_wrappers' => $format == 'html' ? array('webform_element', 'webform_element_wrapper') : array('webform_element_text'),
     '#post_render' => array('webform_element_wrapper'),
-    '#component' => $component,
     '#format' => $format,
     '#value' => isset($value[0]) ? $value[0] : '',
+    '#webform_component' => $component,
   );
 }
 
@@ -192,7 +193,7 @@ function theme_webform_display_email($element) {
 }
 
 /**
- * Implementation of _webform_analysis_component().
+ * Implements _webform_analysis_component().
  */
 function _webform_analysis_email($component, $sids = array()) {
   $placeholders = count($sids) ? array_fill(0, count($sids), "'%s'") : array();
@@ -221,7 +222,7 @@ function _webform_analysis_email($component, $sids = array()) {
 }
 
 /**
- * Implementation of _webform_table_component().
+ * Implements _webform_table_component().
  */
 function _webform_table_email($component, $value) {
   return check_plain(empty($value[0]) ? '' : $value[0]);
@@ -229,7 +230,7 @@ function _webform_table_email($component, $value) {
 
 
 /**
- * Implementation of _webform_csv_headers_component().
+ * Implements _webform_csv_headers_component().
  */
 function _webform_csv_headers_email($component, $export_options) {
   $header = array();
@@ -240,7 +241,7 @@ function _webform_csv_headers_email($component, $export_options) {
 }
 
 /**
- * Implementation of _webform_csv_data_component().
+ * Implements _webform_csv_data_component().
  */
 function _webform_csv_data_email($component, $export_options, $value) {
   return empty($value[0]) ? '' : $value[0];

@@ -1,5 +1,4 @@
 <?php
-// $Id: webform.pages.inc,v 1.10.2.1 2010/03/27 18:21:06 quicksketch Exp $
 
 /**
  * @file
@@ -12,6 +11,10 @@
  */
 function webform_configure_form(&$form_state, $node) {
   $form = array();
+
+  // Add CSS and JS. Don't preprocess because these files are used rarely.
+  drupal_add_css(drupal_get_path('module', 'webform') . '/css/webform-admin.css', 'theme', 'all', FALSE);
+  drupal_add_js(drupal_get_path('module', 'webform') . '/js/webform-admin.js', 'module', 'header', FALSE, TRUE, FALSE);
 
   $form['nid'] = array(
     '#type' => 'value',
@@ -30,7 +33,7 @@ function webform_configure_form(&$form_state, $node) {
   $form['submission']['confirmation_wrapper']['confirmation'] = array(
     '#type' => 'textarea',
     '#title' => t('Confirmation message'),
-    '#description' => t('Message to be shown upon successful submission. If <em>Redirect URL</em> is set this displays as a message, otherwise it will be shown on its own page.'),
+    '#description' => t('Message to be shown upon successful submission. If the redirection location is set to <em>Confirmation page</em> it will be shown on its own page, otherwise this displays as a message.'),
     '#default_value' => $node->webform['confirmation'],
     '#cols' => 40,
     '#rows' => 10,
@@ -38,12 +41,42 @@ function webform_configure_form(&$form_state, $node) {
 
   $form['submission']['confirmation_wrapper']['format'] = filter_form($node->webform['confirmation_format'], NULL, array('confirmation_format'));
 
-  // Redirect URL.
-  $form['submission']['redirect_url'] = array(
+  // Redirection settings.
+  if (strpos($node->webform['redirect_url'], '<') === 0) {
+    $redirect = trim($node->webform['redirect_url'], '<>');
+    // Redirection is set to front page.
+    if ($redirect == 'front') {
+      $redirect = 'url';
+      $redirect_url = $node->webform['redirect_url'];
+    }
+    else {
+      $redirect_url = '';
+    }
+  }
+  else {
+    $redirect = 'url';
+    $redirect_url = $node->webform['redirect_url'];
+  }
+  $form['submission']['redirection'] = array(
+    '#type' => 'item',
+    '#title' => t('Redirection location'),
+    '#theme' => 'webform_advanced_redirection_form',
+    '#description' => t('Choose where to redirect the user upon successful submission.') . ' ' . t('The <em>Custom URL</em> option supports Webform token replacements.') . theme('webform_token_help', array('basic', 'node', 'special', 'submission')),
+  );
+  $form['submission']['redirection']['redirect']= array(
+    '#type' => 'radios',
+    '#default_value' => $redirect,
+    '#options' => array(
+      'confirmation' => t('Confirmation page'),
+      'url' => t('Custom URL'),
+      'none' => t('No redirect (reload current page)'),
+    ),
+  );
+  $form['submission']['redirection']['redirect_url'] = array(
     '#type' => 'textfield',
     '#title' => t('Redirect URL'),
     '#description' => t('URL to redirect the user to upon successful submission.'),
-    '#default_value' => $node->webform['redirect_url'],
+    '#default_value' => $redirect_url,
     '#maxlength' => 255,
   );
 
@@ -79,6 +112,14 @@ function webform_configure_form(&$form_state, $node) {
     '#parents' => array('submit_interval'),
   );
 
+  $form['submission']['status'] = array(
+    '#type' => 'radios',
+    '#title' => t('Status of this form'),
+    '#default_value' => $node->webform['status'] == 0 ? 0 : 1,
+    '#description' => t('Closing a form prevents any further submissions by any users.'),
+    '#parents' => array('status'),
+    '#options' => array(1 => t('Open'), 0 => t('Closed')),
+  );
   /* End Edit Form */
 
   /* Start per-role submission control */
@@ -103,7 +144,7 @@ function webform_configure_form(&$form_state, $node) {
     '#options' => $user_roles,
     '#type' => 'checkboxes',
     '#title' => t('Roles that can submit this webform'),
-    '#description' => t('Uncheck all roles to prevent new submissions. The %authenticated role applies to any user signed into the site, regardless of other assigned roles.', array('%authenticated' => $user_roles[2])),
+    '#description' => t('The %authenticated role applies to any user signed into the site, regardless of other assigned roles.', array('%authenticated' => $user_roles[2])),
   );
   /* End per-role submission control */
 
@@ -115,6 +156,13 @@ function webform_configure_form(&$form_state, $node) {
     '#collapsed' => TRUE,
     '#weight' => -1,
   );
+  $form['advanced']['block'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Available as block'),
+    '#default_value' => $node->webform['block'],
+    '#description' => t('If enabled this webform will be available as a block.'),
+    '#access' => user_access('administer blocks') || user_access('administer site configuration') || user_access('use panels dashboard'),
+  );
   $form['advanced']['teaser'] = array(
     '#type' => 'checkbox',
     '#title' => t('Show complete form in teaser'),
@@ -123,9 +171,15 @@ function webform_configure_form(&$form_state, $node) {
   );
   $form['advanced']['allow_draft'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Allow users to save a draft'),
+    '#title' => t('Show "Save draft" button'),
     '#default_value' => $node->webform['allow_draft'],
-    '#description' => t('Allow your users to save and finish the form later.'),
+    '#description' => t('Allow your users to save and finish the form later. This option is available only for authenticated users.'),
+  );
+  $form['advanced']['auto_save'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Automatically save as draft between pages'),
+    '#default_value' => $node->webform['auto_save'],
+    '#description' => t('Automatically save partial submissions when users click the "Next" or "Previous" buttons in a multipage form.'),
   );
   $form['advanced']['submit_notice'] = array(
     '#type' => 'checkbox',
@@ -166,12 +220,23 @@ function webform_configure_form_validate($form, &$form_state) {
   }
 
   // Ensure the entered redirect URL is valid.
-  $redirect_url = trim($form_state['values']['redirect_url']);
-  if (!empty($redirect_url) && strpos($redirect_url, 'http') === 0 && !valid_url($redirect_url, TRUE)) {
-    form_error($form['submission']['redirect_url'], t('The entered URL is not a valid address.'));
+  if ($form_state['values']['redirect'] == 'url') {
+    $redirect_url = trim($form_state['values']['redirect_url']);
+    if (empty($redirect_url)) {
+      form_error($form['submission']['redirection']['redirect_url'], t('A valid URL is required for custom redirection.'));
+    }
+    elseif (strpos($redirect_url, 'http') === 0 && !valid_url($redirect_url, TRUE)) {
+      form_error($form['submission']['redirection']['redirect_url'], t('The entered URL is not a valid address.'));
+    }
+    else {
+      form_set_value($form['submission']['redirection']['redirect_url'], $redirect_url, $form_state);
+    }
+  }
+  elseif ($form_state['values']['redirect'] == 'confirmation') {
+    form_set_value($form['submission']['redirection']['redirect_url'], '<confirmation>', $form_state);
   }
   else {
-    form_set_value($form['submission']['redirect_url'], $redirect_url, $form_state);
+    form_set_value($form['submission']['redirection']['redirect_url'], '<none>', $form_state);
   }
 }
 
@@ -188,14 +253,23 @@ function webform_configure_form_submit($form, &$form_state) {
   // Save the redirect URL
   $node->webform['redirect_url'] = $form_state['values']['redirect_url'];
 
+  // Overall form status.
+  $node->webform['status'] = $form_state['values']['status'];
+
   // Save roles.
   $node->webform['roles'] = array_keys(array_filter($form_state['values']['roles']));
+
+  // Set the block option.
+  $node->webform['block'] = $form_state['values']['block'];
 
   // Set the Show complete form in teaser setting.
   $node->webform['teaser'] = $form_state['values']['teaser'];
 
   // Set the draft option.
   $node->webform['allow_draft'] = $form_state['values']['allow_draft'];
+
+  // Set the auto-save draft option.
+  $node->webform['auto_save'] = $form_state['values']['auto_save'];
 
   // Set the submit limit to -1 if set to unlimited.
   if ($form_state['values']['enforce_limit'] == 'no') {
@@ -224,14 +298,29 @@ function webform_configure_form_submit($form, &$form_state) {
 function theme_webform_advanced_submit_limit_form($form) {
   $form['submit_limit']['#attributes']['class'] = 'webform-set-active';
   $form['submit_interval']['#attributes']['class'] = 'webform-set-active';
+  // Remove div wrappers around limit options.
   $replacements = array(
-    '!count' => drupal_render($form['submit_limit']),
-    '!timespan' => drupal_render($form['submit_interval']),
+    '!count' => preg_replace('/(<div[^>]*>)(.*?)(<\/div>)/s', '$2', drupal_render($form['submit_limit'])),
+    '!timespan' =>  preg_replace('/(<div[^>]*>)(.*?)(<\/div>)/s', '$2', drupal_render($form['submit_interval'])),
   );
-  $form['enforce_limit']['no']['#prefix'] = '<div class="container-inline">';
-  $form['enforce_limit']['no']['#suffix'] = '</div>';
-  $form['enforce_limit']['yes']['#prefix'] = '<div class="container-inline">';
-  $form['enforce_limit']['yes']['#suffix'] = '</div>';
   $form['enforce_limit']['yes']['#title'] = t('Limit to !count submission(s) !timespan', $replacements);
+  return drupal_render($form);
+}
+
+/**
+ * Theme the redirection setting on the webform node form.
+ */
+function theme_webform_advanced_redirection_form($form) {
+  // Add special class for setting the active radio button.
+  $form['redirect_url']['#attributes']['class'] = 'webform-set-active';
+
+  // Remove title and description for Redirect URL field.
+  $form['redirect_url']['#title'] = NULL;
+  $form['redirect_url']['#description'] = NULL;
+
+  // Add prefix and suffix to display Redirect URL field inline.
+  $form['redirect']['url']['#prefix'] = '<div class="webform-container-inline">';
+  $form['redirect']['url']['#suffix'] = '</div>';
+  $form['redirect']['url']['#title'] = $form['redirect']['url']['#title'] . ': ' . drupal_render($form['redirect_url']);
   return drupal_render($form);
 }
