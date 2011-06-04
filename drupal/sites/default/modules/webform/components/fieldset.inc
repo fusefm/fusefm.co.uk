@@ -1,5 +1,4 @@
 <?php
-// $Id: fieldset.inc,v 1.11.2.3 2010/03/21 03:43:16 quicksketch Exp $
 
 /**
  * @file
@@ -7,7 +6,7 @@
  */
 
 /**
- * Implementation of _webform_defaults_component().
+ * Implements _webform_defaults_component().
  */
 function _webform_defaults_fieldset() {
   return array(
@@ -16,6 +15,7 @@ function _webform_defaults_fieldset() {
     'pid' => 0,
     'weight' => 0,
     'extra' => array(
+      'title_display' => 0,
       'collapsible' => 0,
       'collapsed' => 0,
       'description' => '',
@@ -24,7 +24,7 @@ function _webform_defaults_fieldset() {
 }
 
 /**
- * Implementation of _webform_edit_component().
+ * Implements _webform_edit_component().
  */
 function _webform_edit_fieldset($component) {
   $form = array();
@@ -48,24 +48,40 @@ function _webform_edit_fieldset($component) {
 }
 
 /**
- * Implementation of _webform_render_component().
+ * Implements _webform_render_component().
  */
 function _webform_render_fieldset($component, $value = NULL, $filter = TRUE) {
   $element = array(
-    '#type'          => $component['type'],
-    '#title'         => filter_xss_admin($component['name']),
-    '#weight'        => $component['weight'],
-    '#description'   => $filter ? _webform_filter_descriptions($component['extra']['description']) : $component['extra']['description'],
-    '#collapsible'   => $component['extra']['collapsible'],
-    '#collapsed'     => $component['extra']['collapsed'],
-    '#attributes'    => array('class' => 'webform-component-' . $component['type'], 'id' => 'webform-component-' . $component['form_key']),
+    '#type' => 'fieldset',
+    '#title' => $filter ? _webform_filter_xss($component['name']) : $component['name'],
+    '#title_display' => $component['extra']['title_display'] ? $component['extra']['title_display'] : NULL,
+    '#weight' => $component['weight'],
+    '#description' => $filter ? _webform_filter_descriptions($component['extra']['description']) : $component['extra']['description'],
+    '#collapsible' => $component['extra']['collapsible'],
+    '#collapsed' => $component['extra']['collapsed'],
+    '#attributes' => array('class' => 'webform-component-fieldset'),
+    '#pre_render' => array('webform_fieldset_prerender', 'webform_element_title_display'),
+    '#webform_component' => $component,
   );
+
+  // Hide the fieldset title if #title_display is 'none'.
+  if (!empty($component['extra']['title_display']) && $component['extra']['title_display'] == 'none') {
+    $element['#title'] = NULL;
+  }
 
   return $element;
 }
 
 /**
- * Implementation of _webform_display_component().
+ * Pre-render function to set a fieldset ID.
+ */
+function webform_fieldset_prerender($element) {
+  $element['#attributes']['id'] = 'webform-component-' . str_replace('_', '-', implode('--', array_slice($element['#parents'], 1)));
+  return $element;
+}
+
+/**
+ * Implements _webform_display_component().
  */
 function _webform_display_fieldset($component, $value, $format = 'html') {
   if ($format == 'text') {
@@ -80,7 +96,7 @@ function _webform_display_fieldset($component, $value, $format = 'html') {
     $element = _webform_render_fieldset($component, $value);
   }
 
-  $element['#component'] = $component;
+  $element['#webform_component'] = $component;
   $element['#format'] = $format;
 
   return $element;

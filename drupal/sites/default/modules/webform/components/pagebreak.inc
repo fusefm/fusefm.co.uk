@@ -1,5 +1,4 @@
 <?php
-// $Id: pagebreak.inc,v 1.9 2010/02/09 05:39:08 quicksketch Exp $
 
 /**
  * @file
@@ -7,7 +6,7 @@
  */
 
 /**
- * Implementation of _webform_defaults_component().
+ * Implements _webform_defaults_component().
  */
 function _webform_defaults_pagebreak() {
   return array(
@@ -20,7 +19,7 @@ function _webform_defaults_pagebreak() {
 }
 
 /**
- * Implementation of _webform_theme_component().
+ * Implements _webform_theme_component().
  */
 function _webform_theme_pagebreak() {
   return array(
@@ -31,26 +30,24 @@ function _webform_theme_pagebreak() {
 }
 
 /**
- * Implementation of _webform_edit_component().
+ * Implements _webform_edit_component().
  */
 function _webform_edit_pagebreak($component) {
   $form = array();
-  // No description.
-  $form['extra']['description'] = array(
-    '#type' => 'hidden',
-    '#value' => '',
-  );
   // Force the parent to always be root.
   $form['position']['pid'] = array(
     '#type' => 'hidden',
     '#value' => '0',
   );
 
+  $form['extra']['description'] = array();  // No description.
+  $form['display'] = array('#type' => 'markup'); // Hide the display options.
+
   return $form;
 }
 
 /**
- * Implementation of _webform_render_component().
+ * Implements _webform_render_component().
  */
 function _webform_render_pagebreak($component, $value = NULL, $filter = TRUE) {
   $element = array(
@@ -62,15 +59,15 @@ function _webform_render_pagebreak($component, $value = NULL, $filter = TRUE) {
 }
 
 /**
- * Implementation of _webform_render_component().
+ * Implements _webform_render_component().
  */
 function _webform_display_pagebreak($component, $value = NULL, $format = 'html') {
   $element = array(
     '#theme' => 'webform_display_pagebreak',
     '#title' => $component['name'],
     '#weight' => $component['weight'],
-    '#component' => $component,
     '#format' => $format,
+    '#webform_component' => $component,
   );
   return $element;
 }

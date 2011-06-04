@@ -1,17 +1,26 @@
-/* $Id: webform-admin.css,v 1.1.2.1 2010/04/10 22:02:09 quicksketch Exp $ */
 
-.webform-display-item {
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
+.webform-submission-info {
+  padding: 10px;
 }
-.webform-display-item label {
-  display: inline;
+.webform-submission-info .user-picture {
+  float: right;
+  margin-left: 10px;
+}
+.webform-submission-info-text {
+  overflow: hidden;
+}
+.webform-submission-actions {
+  float: left;
 }
 .webform-submission-navigation {
   text-align: right;
 }
 .webform-submission-next {
   margin-left: 20px;
+}
+.webform-component-select-wrapper {
+  max-height: 300px;
+  overflow: auto;
 }
 .webform-component-select-table table {
   margin: 0;
@@ -59,6 +68,10 @@ td.webform-pagebreak {
 .webform-checkbox {
   text-align: center;
   width: 40px;
+}
+.webform-container-inline div,
+.webform-container-inline div.form-item {
+  display: inline;
 }
 .webform-default-value {
   color: #999;
