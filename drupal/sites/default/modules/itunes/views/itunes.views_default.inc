@@ -1,5 +1,5 @@
 <?php
-// $Id: itunes.views_default.inc,v 1.1 2010/05/20 22:55:48 drewish Exp $
+// $Id: itunes.views_default.inc,v 1.2 2010/09/13 18:57:35 drewish Exp $
 
 /**
  * @file
@@ -55,6 +55,23 @@ function itunes_views_default_views() {
     'links' => 1,
     'comments' => 0,
   ));
+  $handler = $view->new_display('page', 'Page', 'page_1');
+  $handler->override_option('title', 'iTunes');
+  $handler->override_option('path', 'itunes');
+  $handler->override_option('menu', array(
+    'type' => 'none',
+    'title' => '',
+    'description' => '',
+    'weight' => 0,
+    'name' => 'navigation',
+  ));
+  $handler->override_option('tab_options', array(
+    'type' => 'none',
+    'title' => '',
+    'description' => '',
+    'weight' => 0,
+    'name' => 'navigation',
+  ));
   $handler = $view->new_display('feed', 'Feed', 'feed_1');
   $handler->override_option('style_plugin', 'itunes_rss');
   $handler->override_option('style_options', array(
@@ -65,6 +82,7 @@ function itunes_views_default_views() {
     'author' => '',
     'copyright' => '',
     'image_url' => '',
+    'new_feed_url' => '',
     'explicit' => '0',
     'block' => 0,
     'owner_name' => '',
@@ -74,11 +92,10 @@ function itunes_views_default_views() {
       '1' => '',
       '2' => '',
     ),
+    'keywords' => '',
   ));
   $handler->override_option('row_plugin', 'node_rss');
-  $handler->override_option('row_options', array(
-    'item_length' => 'default',
-  ));
+  $handler->override_option('row_options', array());
   $handler->override_option('path', 'itunes/feed');
   $handler->override_option('menu', array(
     'type' => 'none',
@@ -92,30 +109,12 @@ function itunes_views_default_views() {
     'title' => '',
     'description' => '',
     'weight' => 0,
-    'name' => 'navigation',
   ));
   $handler->override_option('displays', array(
-    'default' => 'default',
     'page_1' => 'page_1',
+    'default' => 0,
   ));
   $handler->override_option('sitename_title', FALSE);
-  $handler = $view->new_display('page', 'Page', 'page_1');
-  $handler->override_option('title', 'iTunes');
-  $handler->override_option('path', 'itunes/feed');
-  $handler->override_option('menu', array(
-    'type' => 'none',
-    'title' => '',
-    'description' => '',
-    'weight' => 0,
-    'name' => 'navigation',
-  ));
-  $handler->override_option('tab_options', array(
-    'type' => 'none',
-    'title' => '',
-    'description' => '',
-    'weight' => 0,
-    'name' => 'navigation',
-  ));
   $views[$view->name] = $view;
 
   return $views;

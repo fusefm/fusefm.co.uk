@@ -1,5 +1,5 @@
 <?php
-// $Id: itunes.module,v 1.12 2010/05/25 15:30:57 drewish Exp $
+// $Id: itunes.module,v 1.13 2010/07/16 12:50:25 drewish Exp $
 
 define('ITUNES_EXPLICIT_YES', 1);
 define('ITUNES_EXPLICIT_CLEAN', 2);
@@ -73,7 +73,7 @@ function itunes_form_alter(&$form, &$form_state, $form_id) {
         '#type' => 'fieldset',
         '#title' => t('iTunes feed information'),
         '#collapsible' => TRUE,
-        '#description' => t('iTunes specific information.'),
+        '#group' => 'additional_settings',
         '#weight' => 0,
         '#tree' => TRUE,
       );
