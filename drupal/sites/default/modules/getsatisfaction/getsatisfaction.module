@@ -1,5 +1,5 @@
 <?php
-// $Id: getsatisfaction.module,v 1.8 2010/07/24 13:52:48 flevour Exp $
+// $Id: getsatisfaction.module,v 1.9 2010/12/20 13:17:21 flevour Exp $
 
 /**
  * @file
@@ -122,8 +122,8 @@ function getsatisfaction_admin_settings_form(&$form_state) {
     '#type' => 'textfield',
     '#title' => t('Get Satisfaction company name'),
     '#default_value' => variable_get('getsatisfaction_name', ''),
-    '#size' => 15,
-    '#maxlength' => 20,
+    '#size' => 20,
+    '#maxlength' => 255,
     '#required' => TRUE,
     '#description' => t('The company name you have picked when you have created its profile at Get Satisfaction. See the list of all your companies on <a href="@url">Get Satisfaction</a> clicking the "You" menu and selecting "Your Products and Companies". You need to be logged in.', array('@url' => 'http://www.getsatisfaction.com/')),
   );
