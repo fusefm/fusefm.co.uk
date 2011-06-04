@@ -1,5 +1,10 @@
 <?php
-// $Id: admin.inc,v 1.5.2.8 2010/05/29 02:06:32 ufku Exp $
+// $Id: imce.admin.inc,v 1.1.2.3 2010/06/02 08:33:21 ufku Exp $
+
+/**
+ * @file
+ * Serves administration pages of IMCE.
+ */
 
 /**
  * Admin main page.
@@ -7,9 +12,6 @@
 function imce_admin() {
 
   $profiles = variable_get('imce_profiles', array());
-  if (empty($profiles)) {
-    imce_install_profiles();
-  }
 
   $header = array(t('Profile name'), array('data' => t('Operations'), 'colspan' => 2));
   $rows = array();
@@ -156,7 +158,7 @@ function imce_admin_submit($form, &$form_state) {
 function imce_profile_operations($op = 'add', $pid = 0) {
   //delete
   if ($op == 'delete') {
-    drupal_set_title('Delete profile');
+    drupal_set_title(t('Delete configuration profile'));
     return drupal_get_form('imce_profile_delete_form', $pid);
   }
   //add-edit
@@ -205,7 +207,7 @@ function imce_profile_form(&$form_state, $pid = 0) {
   );
   $form['usertab'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Display file browser link as a tab in user profile pages.'),
+    '#title' => t('Display file browser tab in user profile pages.'),
     '#default_value' => $profile['usertab'],
   );
   $form['filesize'] = array(
@@ -271,7 +273,6 @@ function imce_profile_form(&$form_state, $pid = 0) {
   $form = array('profile' => $form);
   $form['pid'] = array('#type' => 'hidden', '#value' => $pid);
   $form['submit'] = array('#type' => 'submit', '#value' => t('Save configuration'));
-  //$form['#action'] = url('admin/settings/imce/profile/'. $pid);
   $form['#submit'][] = 'imce_profile_submit';
   return $form;
 }
@@ -540,7 +541,7 @@ function imce_update_roles($pid) {
     if ($role['pid'] == $pid) {
       $roles[$rid]['pid'] = 0;
     }
-    else if ($role['pid'] > $pid) {
+    elseif ($role['pid'] > $pid) {
       $roles[$rid]['pid']--;
     }
   }
@@ -560,7 +561,7 @@ function imce_update_profiles($pid, $profile = NULL) {
   }
 
   //delete
-  else if (isset($profiles[$pid]) && $pid > 1) {
+  elseif (isset($profiles[$pid]) && $pid > 1) {
     unset($profiles[$pid]);
     for ($i = $pid+1; isset($profiles[$i]); $i++) {
       $profiles[$i-1] = $profiles[$i];
@@ -646,4 +647,4 @@ function imce_rolesort($r1, $r2) {
 }
 
 //Include core profile functions.
-include_once './'. drupal_get_path('module', 'imce') .'/inc/core_profiles.inc';
+module_load_include('inc', 'imce', 'inc/imce.core.profiles');
