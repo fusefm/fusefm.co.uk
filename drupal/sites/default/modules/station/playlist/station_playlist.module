@@ -1,5 +1,5 @@
 <?php
-// $Id: station_playlist.module,v 1.25 2009/11/28 21:32:32 drewish Exp $
+// $Id: station_playlist.module,v 1.27 2010/11/06 21:11:01 timplunkett Exp $
 
 /**
  * Implementation of hook_help().
@@ -35,7 +35,7 @@ function station_playlist_menu() {
     'page callback' => 'station_playlist_ahah',
     'page arguments' => array(),
     'access arguments' => array('access content'),
-    'type ' => MENU_CALLBACK,
+    'type' => MENU_CALLBACK,
   );
   return $items;
 }
@@ -561,9 +561,11 @@ function station_playlist_nodeapi(&$node, $op, $teaser, $page) {
       if ($view = views_get_view('station_program_playlists')) {
         if ($view->access($display_id)) {
           $block = $view->execute_display($display_id);
-          $node->content[$content_key]['#type'] = 'item';
-          $node->content[$content_key]['#title'] = $block['subject'];
-          $node->content[$content_key]['#value'] = $block['content'];
+          if (isset($block)) {
+            $node->content[$content_key]['#type'] = 'item';
+            $node->content[$content_key]['#title'] = $block['subject'];
+            $node->content[$content_key]['#value'] = $block['content'];
+          }
         }
         $view->destroy();
       }

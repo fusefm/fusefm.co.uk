@@ -1,5 +1,5 @@
 <?php
-// $Id: station_playlist.views.inc,v 1.4 2009/09/21 21:36:20 drewish Exp $
+// $Id: station_playlist.views.inc,v 1.5 2010/07/10 16:51:33 timplunkett Exp $
 
 /**
  * Implementation of hook_views_data().
@@ -11,7 +11,7 @@ function station_playlist_views_data() {
   // have a group defined will go into this field by default.
   $data['station_playlist_track']['table']['group']  = t('Station Playlist Track');
   $data['station_playlist_track']['table']['base'] = array(
-    'field' => 'iid',
+    'field' => 'nid',
     'title' => t('Station Playlist Track'),
     'help' => t('Station playlist track entries.'),
   );

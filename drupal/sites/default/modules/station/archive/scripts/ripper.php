@@ -1,7 +1,7 @@
 #!/usr/local/bin/php -q
 <?php
 
-// $Id: ripper.php,v 1.10 2009/11/28 22:17:27 drewish Exp $
+// $Id: ripper.php,v 1.12 2010/09/22 03:21:38 timplunkett Exp $
 
 /**
  * This script is designed to be run by a cron job or windows scheduled task.

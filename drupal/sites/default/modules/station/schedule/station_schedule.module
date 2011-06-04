@@ -1,5 +1,5 @@
 <?php
-// $Id: station_schedule.module,v 1.94 2009/11/28 23:26:57 drewish Exp $
+// $Id: station_schedule.module,v 1.97 2010/09/13 18:54:05 timplunkett Exp $
 
 /**
  * Implementation of hook_help().
@@ -74,7 +74,7 @@ function station_schedule_menu() {
   // may return index values that are not sorted.
   $weight = 0;
   foreach (station_day_name() as $day => $dayname) {
-    $items['node/%node/view/'. strtolower($dayname)] = array(
+    $items['node/%node/view/'. drupal_strtolower($dayname)] = array(
       'title' => substr($dayname, 0, 3),
       'page callback' => 'station_schedule_day_page',
       'page arguments' => array(1, $dayname),
@@ -272,6 +272,22 @@ function station_schedule_form($node) {
     '#options' => array(1 => t('1 Minute'), 5 => t('5 Minutes'), 15 => t('15 Minutes'), 30 => t('30 Minutes'), 60 => t('1 Hour'), 120 => t('2 Hours')),
     '#description' => t("This is the minimum increment that programs can be scheduled in. <strong>Caution:</strong> Increasing this value on an existing schedule will probably cause weirdness."),
   );
+  $form['settings']['start_hour'] = array(
+    '#type' => 'select',
+    '#title' => t('Programming start time'),
+    '#default_value' => isset($node->settings['start_hour']) ? $node->settings['start_hour'] : 0,
+    '#options' => station_schedule_hour_options('start'),
+    '#required' => TRUE,
+    '#description' => t("This is the time of day when your programming starts."),
+  );
+  $form['settings']['end_hour'] = array(
+    '#type' => 'select',
+    '#title' => t('Programming end time'),
+    '#default_value' => isset($node->settings['end_hour']) ? $node->settings['end_hour'] : 24,
+    '#options' => station_schedule_hour_options('end'),
+    '#required' => TRUE,
+    '#description' => t("This is the time of day when your programming ends. It allows for programming ending as late as noon the next day."),
+  );
   $form['settings']['unscheduled_message'] = array(
     '#type' => 'textfield',
     '#title' => t('No scheduled programming message'),
@@ -332,6 +348,56 @@ function station_schedule_form($node) {
   return $form;
 }
 
+/**
+ * Returns an array of possible programming start and end times.
+ */
+function station_schedule_hour_options($type) {
+  // If type is "start", we'll provide 12am-11pm. If type is "end", we'll provide 1am through noon the next day.
+  switch ($type) {
+    case 'start':
+      $earliest = 0;
+      $latest = 24;
+      break;
+
+    case 'end':
+      $earliest = 1;
+      $latest = 36;
+      break;
+
+    default:
+      return;
+  }
+  $hour_options = array();
+  for ($i = $earliest; $i < $latest; $i++) {
+    if ($i == 0 || $i == 24) {
+      $hour = '12';
+      $suffix = 'am';
+    }
+    elseif ($i == 12) {
+      $hour = '12';
+      $suffix = 'pm';
+    }
+    elseif ($i > 12) {
+      if ($i > 24) {
+        // This is during the morning of the next day, so subtract 24 and attach the suffix 'tomorrow'.
+        $hour = $i - 24;
+        $suffix = 'am ' . t('the next day');
+      }
+      else {
+        // This is after noon on the current day, so subtract 12.
+        $hour = $i - 12;
+        $suffix = 'pm';
+      }
+    }
+    else {
+      // This is during the morning of the current day.
+      $hour = $i;
+      $suffix = 'am';
+    }
+    $hour_options[$i] = $hour . ':00' . $suffix;
+  }
+  return $hour_options;
+}
 
 function theme_station_schedule_form_streams($form) {
   $header = array(t('Name'), t('Description'), t('URLs'));
@@ -349,6 +415,11 @@ function theme_station_schedule_form_streams($form) {
  * Implementation of hook_validate().
  */
 function station_schedule_validate(&$node) {
+  # Make sure the selected programming start time is earlier than the selected end time.
+  if ($node->settings['start_hour'] > $node->settings['end_hour']) {
+    form_set_error("settings][start_hour", t('The start time must be earlier than the end time.'));
+  }
+
   foreach ($node->settings['streams'] as $key => $stream) {
     // Must have both a name and URL.
     if (empty($stream['name']) xor empty($stream['urls'])) {
@@ -396,13 +467,20 @@ function station_schedule_form_submit($form, &$form_state) {
  */
 function station_schedule_load($node) {
   $schedule = array();
+
+  // Load the settings.
+  $settings = db_fetch_array(db_query('SELECT increment, streams, unscheduled_message, start_hour, end_hour FROM {station_schedule} WHERE nid = %d', $node->nid));
+
   // Use station_day_name() for the day ordering in case Sunday isn't the
   // first day of the week.
   foreach (station_day_name() as $day => $name) {
     $schedule[$day] = array();
 
-    $start = $day * MINUTES_IN_DAY;
-    $finish = $start + MINUTES_IN_DAY;
+    $start_hour = $settings['start_hour'] * 60;
+    $start = $day * MINUTES_IN_DAY + $start_hour;
+    $end_hour = $settings['end_hour'] * 60;
+    $finish = $day * MINUTES_IN_DAY + $end_hour;
+
     $result = db_query('SELECT * FROM {station_schedule_item} i WHERE i.schedule_nid = %d AND i.finish > %d AND i.start < %d ORDER BY i.start', $node->nid, $start, $finish);
     while ($s = db_fetch_object($result)) {
       // If a show spans a day, limit its start and finish times to be with-in
@@ -417,8 +495,6 @@ function station_schedule_load($node) {
     }
   }
 
-  // Load the settings.
-  $settings = db_fetch_array(db_query('SELECT increment, streams, unscheduled_message FROM {station_schedule} WHERE nid = %d', $node->nid));
   if (isset($settings['streams']) && $streams = unserialize($settings['streams'])) {
     $settings['streams'] = array();
     foreach ($streams as $key => $stream) {
@@ -614,7 +690,7 @@ function station_schedule_nodeapi(&$node, $op, $teaser, $page) {
         $node->times = array();
         // Load the schedule items in order of start time while taking into
         // account Drupal's first day of the week setting.
-        $result = db_query('SELECT * FROM {station_schedule_item} s WHERE s.program_nid = %d ORDER BY s.schedule_nid, ((s.start + %d) %% %d)', $node->nid, MINUTES_IN_DAY * (7 - variable_get('date_first_day', 0)), MINUTES_IN_WEEK);
+        $result = db_query('SELECT * FROM {station_schedule_item} s INNER JOIN {node} n on n.nid = s.schedule_nid WHERE s.program_nid = %d AND n.status = 1 ORDER BY s.schedule_nid, ((s.start + %d) %% %d)', $node->nid, MINUTES_IN_DAY * (7 - variable_get('date_first_day', 0)), MINUTES_IN_WEEK);
         while ($item = db_fetch_array($result)) {
           $node->times[$item['schedule_nid']][] = $item;
         }
@@ -795,7 +871,7 @@ function station_schedule_get_list() {
   global $base_url;
 
   $schedules = array();
-  $result = db_query("SELECT n.nid, n.title, ss.increment, ss.streams, ss.unscheduled_message FROM {node} n INNER JOIN {station_schedule} ss ON n.nid = ss.nid WHERE n.type = 'station_schedule'");
+  $result = db_query("SELECT n.nid, n.title, ss.increment, ss.streams, ss.unscheduled_message FROM {node} n INNER JOIN {station_schedule} ss ON n.nid = ss.nid WHERE n.type = 'station_schedule' AND n.status = 1");
   while ($schedule = db_fetch_array($result)) {
     $schedule['base_url'] = $base_url;
     if (isset($schedule['streams']) && $streams = unserialize($schedule['streams'])) {
@@ -925,7 +1001,9 @@ function station_schedule_week_page($node) {
 
   // First column is hours.
   $row[0] = array('id' => 'station-sch-hours', 'data' => '');
-  for ($hour = 0; $hour < 24; $hour++) {
+  // Load the settings.
+  $settings = db_fetch_array(db_query('SELECT increment, streams, unscheduled_message, start_hour, end_hour FROM {station_schedule} WHERE nid = %d', $node->nid));
+  for ($hour = $settings['start_hour']; $hour < $settings['end_hour']; $hour++) {
     $row[0]['data'] .= theme('station_schedule_hour', $hour);
   }
 
@@ -935,8 +1013,8 @@ function station_schedule_week_page($node) {
     $row[$day + 1]['data'] = '';
 
     // The last finish pointer starts at the beginning of the day.
-    $last_finish = $day * MINUTES_IN_DAY;
-    $day_finish = ($day + 1) * MINUTES_IN_DAY;
+    $last_finish = $day * MINUTES_IN_DAY + ($settings['start_hour'] * 60);
+    $day_finish = (($day) * MINUTES_IN_DAY) + ($settings['end_hour'] * 60);
     foreach ($items as $item) {
       // Display blocks for unscheduled time periods
       if ($last_finish != $item->start) {

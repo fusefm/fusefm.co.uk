@@ -1,6 +1,6 @@
 <?php
 
-// $Id: station_schedule.install,v 1.29 2009/11/28 22:06:44 drewish Exp $
+// $Id: station_schedule.install,v 1.30 2010/07/09 21:04:36 timplunkett Exp $
 
 /**
  * Implementation of hook_schema().
@@ -136,6 +136,20 @@ function station_schedule_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
+      ),
+      'start_hour' => array(
+        'description' => t('Programming start time in hours.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'end_hour' => array(
+        'description' => t('Programming end time in hours.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 24,
       ),
       'streams' => array(
         'description' => t('Web stream URLs.'),
@@ -512,4 +526,14 @@ function station_schedule_update_6002() {
   }
 
   return array();
+}
+
+/**
+ * Adds programming start times and end times to station schedules.
+ */
+function station_schedule_update_6003() {
+  $ret = array();
+  db_add_field($ret, 'station_schedule', 'start_hour', array('type' => 'int', 'not null' => TRUE, 'default' => 0));
+  db_add_field($ret, 'station_schedule', 'end_hour', array('type' => 'int', 'not null' => TRUE, 'default' => 24));
+  return $ret;
 }
